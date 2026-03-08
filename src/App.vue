@@ -41,6 +41,7 @@ const phaseHexColor: Record<string, string> = {
 }
 
 function updateThemeColor(color: string) {
+  // Update browser chrome / status bar color (Android Chrome, desktop)
   let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
   if (!meta) {
     meta = document.createElement('meta')
@@ -48,6 +49,11 @@ function updateThemeColor(color: string) {
     document.head.appendChild(meta)
   }
   meta.content = color
+
+  // Also paint body + html so the status-bar area on iOS (black-translucent)
+  // and any gap above the root div shows the correct phase color.
+  document.body.style.backgroundColor = color
+  document.documentElement.style.backgroundColor = color
 }
 
 // Reactively update theme-color whenever auth state or session phase changes
@@ -81,7 +87,17 @@ function handleInstallClose() {
 onMounted(() => {
   setupListeners()
   // Set initial theme-color
-  updateThemeColor(auth.isAuthenticated ? (phaseHexColor[session.phase] ?? '#8B3F3F') : '#8B3F3F')
+  updateThemeColor(
+    auth.isAuthenticated ? (phaseHexColor[session.phase ?? 'default'] ?? '#8B3F3F') : '#8B3F3F',
+  )
+
+  // If user was already authenticated on page load (session restored before mount),
+  // the watcher below will never fire — so we check here too.
+  if (auth.isAuthenticated && !hasBeenPrompted()) {
+    setTimeout(() => {
+      showInstallPrompt.value = true
+    }, 1200)
+  }
 })
 
 onUnmounted(() => {
