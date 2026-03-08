@@ -29,43 +29,6 @@ const bgColor = computed(() => {
   }
 })
 
-// Map phase → hex color for the browser chrome / status bar theme-color
-const phaseHexColor: Record<string, string> = {
-  studying: '#8B3F3F',
-  break: '#3B7272',
-  checkin: '#3B4E80',
-  finished: '#2F5E5E',
-  idle: '#8B3F3F',
-  setup: '#8B3F3F',
-  default: '#8B3F3F',
-}
-
-function updateThemeColor(color: string) {
-  // Update browser chrome / status bar color (Android Chrome, desktop)
-  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-  if (!meta) {
-    meta = document.createElement('meta')
-    meta.name = 'theme-color'
-    document.head.appendChild(meta)
-  }
-  meta.content = color
-
-  // Also paint body + html so the status-bar area on iOS (black-translucent)
-  // and any gap above the root div shows the correct phase color.
-  document.body.style.backgroundColor = color
-  document.documentElement.style.backgroundColor = color
-}
-
-// Reactively update theme-color whenever auth state or session phase changes
-watch(
-  () => [auth.isAuthenticated, session.phase] as const,
-  ([authenticated, phase]) => {
-    const color = authenticated ? (phaseHexColor[phase ?? 'default'] ?? '#8B3F3F') : '#8B3F3F'
-    updateThemeColor(color)
-  },
-  { immediate: true },
-)
-
 // Show install prompt once right after the user first logs in
 watch(
   () => auth.isAuthenticated,
@@ -86,10 +49,6 @@ function handleInstallClose() {
 
 onMounted(() => {
   setupListeners()
-  // Set initial theme-color
-  updateThemeColor(
-    auth.isAuthenticated ? (phaseHexColor[session.phase ?? 'default'] ?? '#8B3F3F') : '#8B3F3F',
-  )
 
   // If user was already authenticated on page load (session restored before mount),
   // the watcher below will never fire — so we check here too.
