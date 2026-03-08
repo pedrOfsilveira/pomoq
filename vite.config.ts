@@ -14,7 +14,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.ico', 'pwa-192x192.svg', 'pwa-512x512.svg', 'pwa-maskable-512x512.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'favicon.ico',
+        'pwa-192x192.svg',
+        'pwa-512x512.svg',
+        'pwa-maskable-512x512.svg',
+      ],
       manifest: {
         name: 'PomoQ - Estude com inteligência',
         short_name: 'PomoQ',
