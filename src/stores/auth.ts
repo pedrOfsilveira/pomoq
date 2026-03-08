@@ -28,13 +28,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   function initialize() {
     if (initPromise) return initPromise
-    initPromise = doInitialize()
+    initPromise = doInitialize().catch((error) => {
+      console.error('[auth] initialize failed:', error)
+      session.value = null
+      user.value = null
+      profile.value = null
+    })
     return initPromise
   }
 
   /** Wait until auth has finished initialising. Safe to call multiple times. */
   async function waitForAuth() {
-    if (initPromise) await initPromise
+    await initialize()
   }
 
   async function doInitialize() {
@@ -50,13 +55,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Listen for auth changes (token refresh, sign-in/out from other tabs, etc.)
       supabase.auth.onAuthStateChange(async (_event, newSession) => {
-        session.value = newSession
-        user.value = newSession?.user ?? null
+        try {
+          session.value = newSession
+          user.value = newSession?.user ?? null
 
-        if (user.value) {
-          await fetchProfile()
-        } else {
-          profile.value = null
+          if (user.value) {
+            await fetchProfile()
+          } else {
+            profile.value = null
+          }
+        } catch (error) {
+          console.error('[auth] state change handling failed:', error)
         }
       })
     } finally {
@@ -67,31 +76,35 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchProfile() {
     if (!user.value) return
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.value.id)
-      .limit(1)
-
-    if (!error && data && data.length > 0) {
-      profile.value = data[0] as typeof profile.value
-    } else if (!error && (!data || data.length === 0)) {
-      // Profile doesn't exist yet — create it (trigger may have missed)
-      const meta = user.value.user_metadata ?? {}
-      const { data: created, error: insertErr } = await supabase
+    try {
+      const { data, error } = await supabase
         .from('profiles')
-        .insert({
-          id: user.value.id,
-          email: user.value.email ?? '',
-          display_name: meta.full_name ?? meta.name ?? user.value.email?.split('@')[0] ?? null,
-          avatar_url: meta.avatar_url ?? meta.picture ?? null,
-        })
-        .select()
+        .select('*')
+        .eq('id', user.value.id)
         .limit(1)
 
-      if (!insertErr && created && created.length > 0) {
-        profile.value = created[0] as typeof profile.value
+      if (!error && data && data.length > 0) {
+        profile.value = data[0] as typeof profile.value
+      } else if (!error && (!data || data.length === 0)) {
+        // Profile doesn't exist yet — create it (trigger may have missed)
+        const meta = user.value.user_metadata ?? {}
+        const { data: created, error: insertErr } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.value.id,
+            email: user.value.email ?? '',
+            display_name: meta.full_name ?? meta.name ?? user.value.email?.split('@')[0] ?? null,
+            avatar_url: meta.avatar_url ?? meta.picture ?? null,
+          })
+          .select()
+          .limit(1)
+
+        if (!insertErr && created && created.length > 0) {
+          profile.value = created[0] as typeof profile.value
+        }
       }
+    } catch (error) {
+      console.error('[auth] fetchProfile failed:', error)
     }
   }
 

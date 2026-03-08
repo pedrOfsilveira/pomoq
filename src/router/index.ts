@@ -47,7 +47,11 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   // Always wait for auth to finish initialising (idempotent)
-  await auth.waitForAuth()
+  try {
+    await auth.waitForAuth()
+  } catch (error) {
+    console.error('[router] auth wait failed:', error)
+  }
 
   const requiresAuth = to.meta.requiresAuth !== false
 
