@@ -1,6 +1,6 @@
 export type EnergyLevel = 'green' | 'yellow' | 'red'
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       profiles: {
@@ -34,6 +34,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       study_sessions: {
         Row: {
@@ -72,6 +73,15 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'study_sessions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
       cycles: {
         Row: {
@@ -119,6 +129,15 @@ export interface Database {
           break_duration_seconds?: number
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'cycles_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'study_sessions'
+            referencedColumns: ['id']
+          },
+        ]
       }
       energy_checkins: {
         Row: {
@@ -148,12 +167,35 @@ export interface Database {
           note?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'energy_checkins_session_id_fkey'
+            columns: ['session_id']
+            isOneToOne: false
+            referencedRelation: 'study_sessions'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'energy_checkins_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
     Enums: {
       energy_level: EnergyLevel
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

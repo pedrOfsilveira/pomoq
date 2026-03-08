@@ -107,7 +107,7 @@ export const useSessionStore = defineStore('session', () => {
     if (error) throw error
     if (!data || data.length === 0) throw new Error('Falha ao criar sessão')
 
-    sessionId.value = data[0].id
+    sessionId.value = data[0]!.id
     disciplines.value = config.disciplines
     questionsPerBlock.value = config.questionsPerBlock
     currentDisciplineIndex.value = 0
@@ -145,14 +145,14 @@ export const useSessionStore = defineStore('session', () => {
     if (!data || data.length === 0) throw new Error('Falha ao criar ciclo')
 
     currentCycle.value = {
-      id: data[0].id,
+      id: data[0]!.id,
       cycleNumber: cycleNum,
       discipline,
       questionsTarget: target,
       questionsDone: 0,
       questionsCorrect: 0,
       energyBefore: lastEnergy.value,
-      startedAt: data[0].started_at,
+      startedAt: data[0]!.started_at,
     }
 
     phase.value = 'studying'
