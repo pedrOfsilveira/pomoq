@@ -141,7 +141,7 @@ async function doEnd() {
       <div class="flex gap-2 justify-center">
         <AppButton variant="secondary" size="sm" @click="cancelEnd"> Cancelar </AppButton>
         <button
-          class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500/80 hover:bg-red-500 text-white cursor-pointer transition-colors"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg btn-answer--red text-white cursor-pointer transition-colors"
           @click="doEnd"
         >
           Encerrar
