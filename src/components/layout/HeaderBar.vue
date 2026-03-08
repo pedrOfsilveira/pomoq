@@ -35,7 +35,7 @@ async function handleSignOut() {
       </router-link>
 
       <!-- Nav -->
-      <div class="relative">
+      <div v-if="session.phase === 'idle'" class="relative">
         <button
           @click="menuOpen = !menuOpen"
           class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors cursor-pointer"
