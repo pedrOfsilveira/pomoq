@@ -62,11 +62,27 @@ body {
   }
 }
 
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  /* Make the app feel more native / less like a document */
+  -webkit-touch-callout: none; /* Disable iOS context menu on long-press */
+  -webkit-tap-highlight-color: transparent; /* Remove tap gray square */
+  user-select: none; /* Disable text selection generally */
+}
+
+/* Allow text selection specifically for inputs/textareas */
+input,
+textarea {
+  user-select: auto;
 }
 
 /* Smooth transitions for color mode changes */
