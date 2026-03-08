@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+
+/* PomoQ — Cohesive OKLCH Design System */
+@theme {
+  /* Phase backgrounds — dark enough for crisp white text (L ≈ 0.50) */
+  --color-pomo-red: oklch(0.52 0.13 25);
+  --color-pomo-red-dark: oklch(0.46 0.13 25);
+  --color-pomo-red-light: oklch(0.57 0.11 25);
+
+  --color-pomo-green: oklch(0.52 0.08 180);
+  --color-pomo-green-dark: oklch(0.46 0.08 180);
+  --color-pomo-green-light: oklch(0.57 0.06 180);
+
+  --color-pomo-blue: oklch(0.5 0.09 245);
+  --color-pomo-blue-dark: oklch(0.44 0.09 245);
+  --color-pomo-blue-light: oklch(0.55 0.07 245);
+
+  /* Energy — bright, high-contrast, readable on ALL phase backgrounds */
+  --color-energy-green: oklch(0.78 0.17 152);
+  --color-energy-yellow: oklch(0.86 0.14 85);
+  --color-energy-red: oklch(0.78 0.12 15);
+
+  /* Neutrals */
+  --color-bg-base: oklch(0.96 0.01 270);
+  --color-bg-card: oklch(1 0 0 / 0.85);
+  --color-bg-card-hover: oklch(1 0 0);
+
+  --color-text-primary: oklch(0.22 0.02 270);
+  --color-text-secondary: oklch(0.42 0.02 270);
+  --color-text-muted: oklch(0.6 0.02 270);
+  --color-border: oklch(0.22 0.02 270 / 0.12);
+
+  /* Accent */
+  --color-accent: oklch(0.6 0.16 250);
+
+  /* Font */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Transition */
+  --transition-bg: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global styles */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+/* Smooth transitions for color mode changes */
+.transition-bg {
+  transition: var(--transition-bg);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0 0 / 0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 0.35);
+}
+
+/* Range slider — remove default outline on thumb */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  height: 6px;
+  outline: none;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+input[type='range']::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
