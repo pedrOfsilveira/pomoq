@@ -54,7 +54,7 @@ function updateThemeColor(color: string) {
 watch(
   () => [auth.isAuthenticated, session.phase] as const,
   ([authenticated, phase]) => {
-    const color = authenticated ? (phaseHexColor[phase] ?? phaseHexColor.default) : '#8B3F3F'
+    const color = authenticated ? (phaseHexColor[phase ?? 'default'] ?? '#8B3F3F') : '#8B3F3F'
     updateThemeColor(color)
   },
   { immediate: true },
