@@ -107,7 +107,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="min-h-screen transition-bg flex flex-col"
+    class="min-h-screen transition-bg flex flex-col safe-area-top"
     :class="auth.isAuthenticated ? bgColor : 'bg-pomo-red'"
   >
     <HeaderBar v-if="auth.isAuthenticated" />
