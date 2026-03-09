@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import AppButton from '@/components/ui/AppButton.vue'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
-import { Trophy, LayoutDashboard } from 'lucide-vue-next'
+import { Trophy, BedDouble, LayoutDashboard } from 'lucide-vue-next'
 
 const session = useSessionStore()
 
@@ -13,6 +13,7 @@ const overallAccuracy = computed(() => {
 })
 
 const message = computed(() => {
+  if (session.forcedRest) return 'Você chegou ao limite — descanso é parte do aprendizado.'
   if (session.totalCycles === 0) return 'Sessão encerrada.'
   if (overallAccuracy.value >= 80) return 'Excelente desempenho!'
   if (overallAccuracy.value >= 60) return 'Bom trabalho, continue assim.'
@@ -28,8 +29,11 @@ function startNew() {
   <div class="text-center">
     <!-- Header -->
     <div class="mb-6">
-      <Trophy class="w-8 h-8 mx-auto mb-3 text-white/80" :stroke-width="1.5" />
-      <h2 class="text-2xl font-bold text-white mb-2">Sessão Completa</h2>
+      <BedDouble v-if="session.forcedRest" class="w-8 h-8 mx-auto mb-3 text-energy-red/80" :stroke-width="1.5" />
+      <Trophy v-else class="w-8 h-8 mx-auto mb-3 text-white/80" :stroke-width="1.5" />
+      <h2 class="text-2xl font-bold text-white mb-2">
+        {{ session.forcedRest ? 'Hora de Descansar' : 'Sessão Completa' }}
+      </h2>
       <p class="text-white/80 text-lg">{{ message }}</p>
     </div>
 

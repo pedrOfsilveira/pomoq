@@ -52,6 +52,7 @@ export const useSessionStore = defineStore('session', () => {
   const totalQuestions = ref(0)
   const totalCorrect = ref(0)
   const lastEnergy = ref<EnergyLevel | null>(null)
+  const forcedRest = ref(false)
 
   // Per-cycle error reviews
   const cycleErrorReviews = ref<ErrorReview[]>([])
@@ -264,10 +265,10 @@ export const useSessionStore = defineStore('session', () => {
       })
       .eq('id', sessionId.value)
 
-    // If red energy, suggest ending or taking long break
-    if (energy === 'red') {
-      breakTarget.value = getBreakDuration(energy)
-      phase.value = 'break'
+    // If red energy and cycle had ≤2 questions, there's nowhere left to reduce — end the session
+    if (energy === 'red' && (currentCycle.value?.questionsTarget ?? 0) <= 2) {
+      forcedRest.value = true
+      await endSession()
       return
     }
 
@@ -358,6 +359,7 @@ export const useSessionStore = defineStore('session', () => {
     totalQuestions.value = 0
     totalCorrect.value = 0
     lastEnergy.value = null
+    forcedRest.value = false
     breakSeconds.value = 0
   }
 
@@ -373,6 +375,7 @@ export const useSessionStore = defineStore('session', () => {
     totalQuestions,
     totalCorrect,
     lastEnergy,
+    forcedRest,
     breakSeconds,
     breakTarget,
     currentDiscipline,

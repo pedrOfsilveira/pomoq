@@ -1,42 +1,75 @@
-# ./
+# Pomoq
 
-This template should help get you started developing with Vue 3 in Vite.
+Aplicativo web focado em estudo com ciclos de sessao, check-in de energia e historico de desempenho.
 
-## Recommended IDE Setup
+## Fluxograma do App
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+![Fluxograma do Pomoq](./public/fluxograma.png)
 
-## Recommended Browser Setup
+## O que o app faz
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- Controle de sessao de estudo por fases (setup, estudo, revisao, check-in, pausa e finalizacao).
+- Dashboard com graficos de volume, disciplina, energia e acuracia.
+- Relatorios e historico de sessoes.
+- Autenticacao com Supabase.
+- Estrutura pronta para PWA (instalavel).
 
-## Type Support for `.vue` Imports in TS
+## Stack
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- `Vue 3` + `TypeScript`
+- `Vite`
+- `Pinia` (estado)
+- `Vue Router`
+- `Supabase`
+- `Chart.js` + `vue-chartjs`
 
-## Customize configuration
+## Rotas principais
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+- `/login`: autenticacao
+- `/`: fluxo principal da sessao de estudo
+- `/dashboard`: visualizacao de metricas
+- `/report`: relatorios
+- `/settings`: configuracoes
 
-## Project Setup
+## Como rodar localmente
 
-```sh
+### 1. Instalar dependencias
+
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### 2. Configurar variaveis de ambiente
 
-```sh
+Crie um arquivo `.env` na raiz com:
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
+
+### 3. Iniciar em desenvolvimento
+
+```bash
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+## Scripts
 
-```sh
-npm run build
-```
+- `npm run dev`: inicia servidor de desenvolvimento
+- `npm run build`: type-check + build de producao
+- `npm run preview`: serve build localmente
+- `npm run format`: formata arquivos em `src/`
+
+## Estrutura resumida
+
+- `src/pages/`: telas principais
+- `src/components/session/`: componentes das fases da sessao
+- `src/components/charts/`: componentes de graficos
+- `src/stores/`: estado global (auth, historico, sessao)
+- `src/lib/supabase.ts`: cliente Supabase
+
+## Observacoes
+
+- O app exige autenticacao para as rotas principais.
+- Se as variaveis do Supabase nao estiverem definidas, a aplicacao falha na inicializacao.

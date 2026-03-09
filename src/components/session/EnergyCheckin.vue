@@ -48,6 +48,12 @@ const selectedColor = computed(() => {
 // Show what will happen next
 const nextInfo = computed(() => {
   if (!selectedEnergy.value) return ''
+
+  // Warn that the session will end if red energy + current cycle is already at the minimum
+  if (selectedEnergy.value === 'red' && (session.currentCycle?.questionsTarget ?? 0) <= 2) {
+    return 'Sessão encerrada — hora de descansar.'
+  }
+
   const base = session.questionsPerBlock
   const adjusted = session.getAdjustedQuestions(selectedEnergy.value, base)
   const breakDuration = session.getBreakDuration(selectedEnergy.value) / 60
