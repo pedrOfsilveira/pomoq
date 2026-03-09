@@ -8,7 +8,7 @@ import { usePwaInstall } from '@/composables/usePwaInstall'
 
 const session = useSessionStore()
 const auth = useAuthStore()
-const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted } = usePwaInstall()
+const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted, canInstall } = usePwaInstall()
 
 // Install prompt visibility
 const showInstallPrompt = ref(false)
@@ -56,12 +56,11 @@ watch(
   { immediate: true },
 )
 
-// Show install prompt once right after the user first logs in
+// Show install prompt once the browser signals it can install AND the user is authenticated
 watch(
-  () => auth.isAuthenticated,
-  (authenticated, wasAuthenticated) => {
-    if (authenticated && !wasAuthenticated && !hasBeenPrompted()) {
-      // Small delay so the page finishes transitioning
+  () => canInstall.value && auth.isAuthenticated,
+  (ready) => {
+    if (ready && !hasBeenPrompted()) {
       setTimeout(() => {
         showInstallPrompt.value = true
       }, 1200)
@@ -78,9 +77,8 @@ onMounted(() => {
   setupListeners()
   syncBodyColor(session.phase, auth.isAuthenticated)
 
-  // If user was already authenticated on page load (session restored before mount),
-  // the watcher below will never fire — so we check here too.
-  if (auth.isAuthenticated && !hasBeenPrompted()) {
+  // If canInstall + auth are already true at mount time, the watcher won't fire — check here too.
+  if (canInstall.value && auth.isAuthenticated && !hasBeenPrompted()) {
     setTimeout(() => {
       showInstallPrompt.value = true
     }, 1200)
