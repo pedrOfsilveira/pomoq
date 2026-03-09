@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import type { EnergyLevel } from '@/types/database'
+
+const STORAGE_KEY = 'pomoq_session'
 
 export type SessionPhase =
   | 'idle' // No session active
@@ -61,6 +63,97 @@ export const useSessionStore = defineStore('session', () => {
   const breakSeconds = ref(0)
   const breakTarget = ref(300) // 5 min default
   let breakInterval: ReturnType<typeof setInterval> | null = null
+
+  // ── LocalStorage persistence ────────────────────────────────────────────────
+
+  function saveToStorage() {
+    if (phase.value === 'idle') {
+      localStorage.removeItem(STORAGE_KEY)
+      return
+    }
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          sessionId: sessionId.value,
+          phase: phase.value,
+          disciplines: disciplines.value,
+          questionsPerBlock: questionsPerBlock.value,
+          currentDisciplineIndex: currentDisciplineIndex.value,
+          currentCycle: currentCycle.value,
+          cycleErrorReviews: cycleErrorReviews.value,
+          totalCycles: totalCycles.value,
+          totalQuestions: totalQuestions.value,
+          totalCorrect: totalCorrect.value,
+          lastEnergy: lastEnergy.value,
+          forcedRest: forcedRest.value,
+          breakSeconds: breakSeconds.value,
+          breakTarget: breakTarget.value,
+        }),
+      )
+    } catch {
+      // storage full or unavailable — silently ignore
+    }
+  }
+
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const s = JSON.parse(raw)
+      sessionId.value = s.sessionId ?? null
+      phase.value = s.phase ?? 'idle'
+      disciplines.value = s.disciplines ?? []
+      questionsPerBlock.value = s.questionsPerBlock ?? 5
+      currentDisciplineIndex.value = s.currentDisciplineIndex ?? 0
+      currentCycle.value = s.currentCycle ?? null
+      cycleErrorReviews.value = s.cycleErrorReviews ?? []
+      totalCycles.value = s.totalCycles ?? 0
+      totalQuestions.value = s.totalQuestions ?? 0
+      totalCorrect.value = s.totalCorrect ?? 0
+      lastEnergy.value = s.lastEnergy ?? null
+      forcedRest.value = s.forcedRest ?? false
+      breakSeconds.value = s.breakSeconds ?? 0
+      breakTarget.value = s.breakTarget ?? 300
+
+      // Resume break timer if we were mid-break
+      if (phase.value === 'break') {
+        if (breakInterval) clearInterval(breakInterval)
+        breakInterval = setInterval(() => {
+          breakSeconds.value++
+        }, 1000)
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  }
+
+  // Persist on every meaningful state change
+  watch(
+    [
+      sessionId,
+      phase,
+      disciplines,
+      questionsPerBlock,
+      currentDisciplineIndex,
+      currentCycle,
+      cycleErrorReviews,
+      totalCycles,
+      totalQuestions,
+      totalCorrect,
+      lastEnergy,
+      forcedRest,
+      breakSeconds,
+      breakTarget,
+    ],
+    saveToStorage,
+    { deep: true },
+  )
+
+  // Restore on store creation
+  loadFromStorage()
+
+  // ───────────────────────────────────────────────────────────────────────────
 
   // Computed
   const currentDiscipline = computed(() => disciplines.value[currentDisciplineIndex.value] || '')
@@ -361,6 +454,7 @@ export const useSessionStore = defineStore('session', () => {
     lastEnergy.value = null
     forcedRest.value = false
     breakSeconds.value = 0
+    localStorage.removeItem(STORAGE_KEY)
   }
 
   return {
