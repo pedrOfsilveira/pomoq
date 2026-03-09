@@ -304,24 +304,38 @@ export const useSessionStore = defineStore('session', () => {
     // Guard: prevent incrementing past the target (race condition on rapid clicks)
     if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) return
 
+    const previousDone = currentCycle.value.questionsDone
+    const previousTotal = totalQuestions.value
+
     currentCycle.value.questionsDone++
     totalQuestions.value++
 
-    // Update in database
-    await supabase
-      .from('cycles')
-      .update({ questions_done: currentCycle.value.questionsDone })
-      .eq('id', currentCycle.value.id)
+    try {
+      // Update in database
+      await supabase
+        .from('cycles')
+        .update({ questions_done: currentCycle.value.questionsDone })
+        .eq('id', currentCycle.value.id)
 
-    // Cycle complete → always go to review
-    if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
-      phase.value = 'review'
+      // Cycle complete → always go to review
+      if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
+        phase.value = 'review'
+      }
+    } catch (error) {
+      // Keep local state consistent with persisted state when network/API fails.
+      currentCycle.value.questionsDone = previousDone
+      totalQuestions.value = previousTotal
+      throw error
     }
   }
 
   // Submit per-question review (correct/wrong + error reasons) and proceed to check-in
   async function submitReview(reviews: ReviewEntry[]) {
     if (!currentCycle.value) return
+
+    const previousCorrect = currentCycle.value.questionsCorrect
+    const previousTotalCorrect = totalCorrect.value
+    const previousErrorReviews = [...cycleErrorReviews.value]
 
     const correctCount = reviews.filter((r) => r.correct).length
     currentCycle.value.questionsCorrect = correctCount
@@ -339,20 +353,30 @@ export const useSessionStore = defineStore('session', () => {
 
     cycleErrorReviews.value = errorReviews
 
-    // Persist to DB
-    if (currentCycle.value.id) {
-      await supabase
-        .from('cycles')
-        .update({ questions_correct: correctCount, error_reviews: errorReviews })
-        .eq('id', currentCycle.value.id)
-    }
+    try {
+      // Persist to DB
+      if (currentCycle.value.id) {
+        await supabase
+          .from('cycles')
+          .update({ questions_correct: correctCount, error_reviews: errorReviews })
+          .eq('id', currentCycle.value.id)
+      }
 
-    phase.value = 'checkin'
+      phase.value = 'checkin'
+    } catch (error) {
+      currentCycle.value.questionsCorrect = previousCorrect
+      totalCorrect.value = previousTotalCorrect
+      cycleErrorReviews.value = previousErrorReviews
+      throw error
+    }
   }
 
   // Submit energy check-in
   async function submitCheckin(energy: EnergyLevel, note?: string) {
     if (!auth.user || !sessionId.value || !currentCycle.value) return
+
+    const previousEnergy = lastEnergy.value
+    const previousCycles = totalCycles.value
 
     // Save check-in
     await supabase.from('energy_checkins').insert({
@@ -377,27 +401,33 @@ export const useSessionStore = defineStore('session', () => {
     lastEnergy.value = energy
     totalCycles.value++
 
-    // Update session totals
-    await supabase
-      .from('study_sessions')
-      .update({
-        total_questions: totalQuestions.value,
-        total_correct: totalCorrect.value,
-        total_cycles: totalCycles.value,
-      })
-      .eq('id', sessionId.value)
+    try {
+      // Update session totals
+      await supabase
+        .from('study_sessions')
+        .update({
+          total_questions: totalQuestions.value,
+          total_correct: totalCorrect.value,
+          total_cycles: totalCycles.value,
+        })
+        .eq('id', sessionId.value)
 
-    // If red energy and cycle had ≤2 questions, there's nowhere left to reduce — end the session
-    if (energy === 'red' && (currentCycle.value?.questionsTarget ?? 0) <= 2) {
-      forcedRest.value = true
-      await endSession()
-      return
+      // If red energy and cycle had ≤2 questions, there's nowhere left to reduce — end the session
+      if (energy === 'red' && (currentCycle.value?.questionsTarget ?? 0) <= 2) {
+        forcedRest.value = true
+        await endSession()
+        return
+      }
+
+      // Start break
+      breakTarget.value = getBreakDuration(energy)
+      startBreak()
+      phase.value = 'break'
+    } catch (error) {
+      lastEnergy.value = previousEnergy
+      totalCycles.value = previousCycles
+      throw error
     }
-
-    // Start break
-    breakTarget.value = getBreakDuration(energy)
-    startBreak()
-    phase.value = 'break'
   }
 
   // Start break timer
@@ -410,69 +440,83 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   // End break and move to next cycle (or end the session after the last discipline)
+  let endBreakInProgress = false
   async function endBreak() {
-    if (breakInterval) {
-      clearInterval(breakInterval)
-      breakInterval = null
+    if (endBreakInProgress) return
+    endBreakInProgress = true
+    try {
+      if (breakInterval) {
+        clearInterval(breakInterval)
+        breakInterval = null
+      }
+
+      const isLastDiscipline = currentDisciplineIndex.value >= disciplines.value.length - 1
+
+      if (isLastDiscipline && !loopDisciplines.value) {
+        // Default behaviour: end the session after the last discipline
+        await endSession()
+        return
+      }
+
+      // Rotate to next discipline (loop back to start when enabled)
+      currentDisciplineIndex.value = loopDisciplines.value
+        ? (currentDisciplineIndex.value + 1) % disciplines.value.length
+        : currentDisciplineIndex.value + 1
+
+      await startNewCycle()
+    } finally {
+      endBreakInProgress = false
     }
-
-    const isLastDiscipline = currentDisciplineIndex.value >= disciplines.value.length - 1
-
-    if (isLastDiscipline && !loopDisciplines.value) {
-      // Default behaviour: end the session after the last discipline
-      await endSession()
-      return
-    }
-
-    // Rotate to next discipline (loop back to start when enabled)
-    currentDisciplineIndex.value = loopDisciplines.value
-      ? (currentDisciplineIndex.value + 1) % disciplines.value.length
-      : currentDisciplineIndex.value + 1
-
-    await startNewCycle()
   }
 
   // End the session
+  let endSessionInProgress = false
   async function endSession() {
-    if (!sessionId.value) return
+    if (endSessionInProgress) return
+    endSessionInProgress = true
+    try {
+      if (!sessionId.value) return
 
-    if (breakInterval) {
-      clearInterval(breakInterval)
-      breakInterval = null
-    }
-
-    // If no questions were answered, discard the session entirely
-    if (totalQuestions.value === 0) {
-      // Delete orphan cycle(s) and the empty session
-      if (currentCycle.value?.id) {
-        await supabase.from('cycles').delete().eq('id', currentCycle.value.id)
+      if (breakInterval) {
+        clearInterval(breakInterval)
+        breakInterval = null
       }
-      await supabase.from('study_sessions').delete().eq('id', sessionId.value)
-      reset()
-      return
-    }
 
-    // Close current cycle if open
-    if (currentCycle.value?.id) {
+      // If no questions were answered, discard the session entirely
+      if (totalQuestions.value === 0) {
+        // Delete orphan cycle(s) and the empty session
+        if (currentCycle.value?.id) {
+          await supabase.from('cycles').delete().eq('id', currentCycle.value.id)
+        }
+        await supabase.from('study_sessions').delete().eq('id', sessionId.value)
+        reset()
+        return
+      }
+
+      // Close current cycle if open
+      if (currentCycle.value?.id) {
+        await supabase
+          .from('cycles')
+          .update({ ended_at: new Date().toISOString() })
+          .eq('id', currentCycle.value.id)
+      }
+
+      // Update session
       await supabase
-        .from('cycles')
-        .update({ ended_at: new Date().toISOString() })
-        .eq('id', currentCycle.value.id)
+        .from('study_sessions')
+        .update({
+          ended_at: new Date().toISOString(),
+          total_questions: totalQuestions.value,
+          total_correct: totalCorrect.value,
+          total_cycles: totalCycles.value,
+          final_energy: lastEnergy.value,
+        })
+        .eq('id', sessionId.value)
+
+      phase.value = 'finished'
+    } finally {
+      endSessionInProgress = false
     }
-
-    // Update session
-    await supabase
-      .from('study_sessions')
-      .update({
-        ended_at: new Date().toISOString(),
-        total_questions: totalQuestions.value,
-        total_correct: totalCorrect.value,
-        total_cycles: totalCycles.value,
-        final_energy: lastEnergy.value,
-      })
-      .eq('id', sessionId.value)
-
-    phase.value = 'finished'
   }
 
   // Reset store

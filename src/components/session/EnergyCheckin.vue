@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { useSessionStore } from '@/stores/session'
 import type { EnergyLevel } from '@/types/database'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -9,6 +10,7 @@ const session = useSessionStore()
 const selectedEnergy = ref<EnergyLevel | null>(null)
 const note = ref('')
 const loading = ref(false)
+const submitError = ref('')
 
 const energyOptions: {
   level: EnergyLevel
@@ -85,8 +87,12 @@ const nextInfo = computed(() => {
 async function submit() {
   if (!selectedEnergy.value) return
   loading.value = true
+  submitError.value = ''
   try {
     await session.submitCheckin(selectedEnergy.value, note.value || undefined)
+  } catch (e: any) {
+    Sentry.captureException(e)
+    submitError.value = e?.message || 'Falha ao salvar check-in. Tente novamente.'
   } finally {
     loading.value = false
   }
@@ -182,5 +188,8 @@ async function submit() {
     >
       {{ selectedEnergy === 'red' ? 'Fazer pausa longa' : 'Continuar' }}
     </AppButton>
+    <p v-if="submitError" class="text-red-200 text-xs mt-2">
+      {{ submitError }}
+    </p>
   </div>
 </template>

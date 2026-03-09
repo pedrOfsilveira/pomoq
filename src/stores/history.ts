@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import type { EnergyLevel, ErrorReviewRecord, ErrorReason } from '@/types/database'
@@ -72,6 +73,7 @@ export const useHistoryStore = defineStore('history', () => {
   const sessions = ref<SessionSummary[]>([])
   const cycles = ref<CycleSummary[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
 
   const totalStudySessions = computed(() => sessions.value.length)
 
@@ -281,31 +283,41 @@ export const useHistoryStore = defineStore('history', () => {
   async function fetchSessions() {
     if (!auth.user) return
     loading.value = true
+    error.value = null
     try {
-      const [sessionsResult, cyclesResult] = await Promise.all([
-        supabase
-          .from('study_sessions')
-          .select(
-            'id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy',
-          )
-          .eq('user_id', auth.user.id)
-          .order('started_at', { ascending: false })
-          .limit(100),
-        supabase
-          .from('cycles')
-          .select(
-            'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
-          )
-          .order('started_at', { ascending: false })
-          .limit(500),
-      ])
+      const sessionsResult = await supabase
+        .from('study_sessions')
+        .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy')
+        .eq('user_id', auth.user.id)
+        .order('started_at', { ascending: false })
+        .limit(100)
 
-      if (!sessionsResult.error && sessionsResult.data) {
-        sessions.value = sessionsResult.data as SessionSummary[]
+      if (sessionsResult.error) throw sessionsResult.error
+      sessions.value = (sessionsResult.data ?? []) as SessionSummary[]
+
+      const sessionIds = sessions.value.map((s) => s.id)
+      if (sessionIds.length === 0) {
+        cycles.value = []
+        return
       }
-      if (!cyclesResult.error && cyclesResult.data) {
-        cycles.value = cyclesResult.data as CycleSummary[]
-      }
+
+      const cyclesResult = await supabase
+        .from('cycles')
+        .select(
+          'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
+        )
+        .in('session_id', sessionIds)
+        .order('started_at', { ascending: false })
+        .limit(500)
+
+      if (cyclesResult.error) throw cyclesResult.error
+      cycles.value = (cyclesResult.data ?? []) as CycleSummary[]
+    } catch (e: any) {
+      Sentry.captureException(e)
+      error.value = e?.message || 'Falha ao carregar histórico'
+      sessions.value = []
+      cycles.value = []
+      throw e
     } finally {
       loading.value = false
     }
@@ -315,6 +327,7 @@ export const useHistoryStore = defineStore('history', () => {
     sessions,
     cycles,
     loading,
+    error,
     totalStudySessions,
     totalQuestionsAnswered,
     totalCorrectAnswers,

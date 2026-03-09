@@ -11,7 +11,9 @@ const auth = useAuthStore()
 
 onMounted(() => {
   if (auth.isAuthenticated) {
-    history.fetchSessions()
+    history.fetchSessions().catch(() => {
+      // Error is stored in history.error for UI display.
+    })
   }
 })
 
@@ -19,7 +21,9 @@ watch(
   () => auth.isAuthenticated,
   (ready) => {
     if (ready && history.sessions.length === 0) {
-      history.fetchSessions()
+      history.fetchSessions().catch(() => {
+        // Error is stored in history.error for UI display.
+      })
     }
   },
 )
@@ -102,6 +106,13 @@ function formatDateShort(dateStr: string): string {
       <!-- Session list -->
       <div class="bg-white/10 rounded-2xl p-6">
         <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">Sessões Recentes</h2>
+
+        <div
+          v-if="history.error"
+          class="mb-3 bg-red-500/20 border border-red-400/30 rounded-lg px-3 py-2 text-red-100 text-xs"
+        >
+          {{ history.error }}
+        </div>
 
         <div v-if="history.loading" class="text-center py-8">
           <div class="text-white/60">Carregando...</div>

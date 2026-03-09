@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { useSessionStore } from '@/stores/session'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -9,6 +10,7 @@ import { ArrowRight } from 'lucide-vue-next'
 const session = useSessionStore()
 const showConfirmEnd = ref(false)
 const answering = ref(false)
+const actionError = ref('')
 
 // Large display: questions done / target
 const displayDone = computed(() =>
@@ -21,8 +23,12 @@ const displayTarget = computed(() =>
 async function nextQuestion() {
   if (answering.value) return
   answering.value = true
+  actionError.value = ''
   try {
     await session.recordAnswer()
+  } catch (e: any) {
+    Sentry.captureException(e)
+    actionError.value = e?.message || 'Falha ao registrar questão. Tente novamente.'
   } finally {
     answering.value = false
   }
@@ -92,6 +98,7 @@ async function doEnd() {
         Próxima questão
         <ArrowRight v-if="!answering" class="w-5 h-5 ml-2" :stroke-width="2.5" />
       </button>
+      <p v-if="actionError" class="text-red-200 text-xs mt-2">{{ actionError }}</p>
     </div>
 
     <!-- Session info bar -->

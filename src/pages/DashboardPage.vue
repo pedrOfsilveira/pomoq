@@ -21,7 +21,9 @@ const auth = useAuthStore()
 // Fetch sessions when the component mounts AND whenever auth becomes ready
 onMounted(() => {
   if (auth.isAuthenticated) {
-    history.fetchSessions()
+    history.fetchSessions().catch(() => {
+      // Error is stored in history.error for UI display.
+    })
   }
 })
 
@@ -29,7 +31,9 @@ watch(
   () => auth.isAuthenticated,
   (ready) => {
     if (ready && history.sessions.length === 0) {
-      history.fetchSessions()
+      history.fetchSessions().catch(() => {
+        // Error is stored in history.error for UI display.
+      })
     }
   },
 )
@@ -105,6 +109,13 @@ const worstColor = computed(() => {
           class="inline-block w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4"
         />
         <p class="text-white/50">Carregando dados...</p>
+      </div>
+
+      <div
+        v-else-if="history.error"
+        class="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-3 text-red-100 text-sm"
+      >
+        {{ history.error }}
       </div>
 
       <!-- Empty state -->

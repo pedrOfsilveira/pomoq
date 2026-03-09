@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { useSessionStore, type ErrorReason, type ReviewEntry } from '@/stores/session'
 import AppButton from '@/components/ui/AppButton.vue'
 import { ClipboardList, Check, X, EyeOff, BookOpen, MessageSquare } from 'lucide-vue-next'
@@ -13,6 +14,8 @@ interface QuestionEntry {
 }
 
 const total = computed(() => session.currentCycle?.questionsDone ?? 0)
+const submitting = ref(false)
+const submitError = ref('')
 
 const entries = ref<QuestionEntry[]>(
   Array.from({ length: total.value }, () => ({
@@ -60,12 +63,22 @@ function selectReason(index: number, reason: ErrorReason) {
 }
 
 async function submit() {
+  if (submitting.value) return
+  submitting.value = true
+  submitError.value = ''
   const reviews: ReviewEntry[] = entries.value.map((e) => ({
     correct: e.isCorrect === true,
     errorReason: e.errorReason ?? undefined,
     contentNote: e.contentNote.trim() || undefined,
   }))
-  await session.submitReview(reviews)
+  try {
+    await session.submitReview(reviews)
+  } catch (e: any) {
+    Sentry.captureException(e)
+    submitError.value = e?.message || 'Falha ao salvar correção. Tente novamente.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -165,9 +178,12 @@ async function submit() {
     </div>
 
     <!-- Submit -->
-    <AppButton class="w-full" size="lg" :disabled="!canSubmit" @click="submit">
+    <AppButton class="w-full" size="lg" :disabled="!canSubmit || submitting" :loading="submitting" @click="submit">
       Continuar
     </AppButton>
+    <p v-if="submitError" class="text-red-200 text-xs mt-2">
+      {{ submitError }}
+    </p>
     <p v-if="!canSubmit" class="text-white/50 text-xs mt-2">
       {{ pendingCount }} quest{{ pendingCount !== 1 ? 'ões pendentes' : 'ão pendente' }}
     </p>

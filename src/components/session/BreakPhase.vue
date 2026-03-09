@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import * as Sentry from '@sentry/vue'
 import { useSessionStore } from '@/stores/session'
 import AppButton from '@/components/ui/AppButton.vue'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
@@ -8,6 +9,15 @@ import { Coffee, ArrowRight } from 'lucide-vue-next'
 
 const session = useSessionStore()
 const canSkip = ref(false)
+const processing = ref(false)
+const actionError = ref('')
+
+// True when clicking "continue" will end the session (last discipline, no loop)
+const isSessionEnding = computed(
+  () =>
+    session.currentDisciplineIndex >= session.disciplines.length - 1 &&
+    !session.loopDisciplines,
+)
 
 // Format seconds as MM:SS
 function formatTime(seconds: number): string {
@@ -49,11 +59,31 @@ onUnmounted(() => {
 })
 
 async function endBreakAndContinue() {
-  await session.endBreak()
+  if (processing.value) return
+  processing.value = true
+  actionError.value = ''
+  try {
+    await session.endBreak()
+  } catch (e: any) {
+    Sentry.captureException(e)
+    actionError.value = e?.message || 'Falha ao avançar após a pausa. Tente novamente.'
+  } finally {
+    processing.value = false
+  }
 }
 
 async function endSessionNow() {
-  await session.endSession()
+  if (processing.value) return
+  processing.value = true
+  actionError.value = ''
+  try {
+    await session.endSession()
+  } catch (e: any) {
+    Sentry.captureException(e)
+    actionError.value = e?.message || 'Falha ao encerrar sessão. Tente novamente.'
+  } finally {
+    processing.value = false
+  }
 }
 </script>
 
@@ -103,31 +133,49 @@ async function endSessionNow() {
 
     <!-- Actions -->
     <div class="space-y-3">
-      <AppButton v-if="breakComplete" class="w-full" size="lg" @click="endBreakAndContinue">
-        <ArrowRight class="w-4 h-4 mr-2" :stroke-width="2" />
-        Próximo Bloco
+      <AppButton
+        v-if="breakComplete"
+        class="w-full"
+        size="lg"
+        :loading="processing"
+        :disabled="processing"
+        @click="endBreakAndContinue"
+      >
+        <ArrowRight v-if="!processing" class="w-4 h-4 mr-2" :stroke-width="2" />
+        {{ isSessionEnding ? 'Encerrar sessão' : 'Próximo Bloco' }}
       </AppButton>
 
       <AppButton
         v-if="canSkip && !breakComplete"
         class="w-full"
         variant="secondary"
+        :loading="processing"
+        :disabled="processing"
         @click="endBreakAndContinue"
       >
-        Pular pausa
+        {{ isSessionEnding ? 'Encerrar agora' : 'Pular pausa' }}
       </AppButton>
 
-      <AppButton v-if="isRedEnergy" class="w-full" variant="danger" @click="endSessionNow">
+      <AppButton
+        v-if="isRedEnergy"
+        class="w-full"
+        variant="danger"
+        :loading="processing"
+        :disabled="processing"
+        @click="endSessionNow"
+      >
         Encerrar sessão por hoje
       </AppButton>
 
       <button
         v-if="!isRedEnergy && !breakComplete"
+        :disabled="processing"
         @click="endSessionNow"
-        class="text-white/50 hover:text-white/80 text-xs transition-colors cursor-pointer bg-transparent border-none underline"
+        class="text-white/50 hover:text-white/80 text-xs transition-colors cursor-pointer bg-transparent border-none underline disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Encerrar sessão
       </button>
+      <p v-if="actionError" class="text-red-200 text-xs mt-1">{{ actionError }}</p>
     </div>
 
     <!-- Next discipline preview -->
