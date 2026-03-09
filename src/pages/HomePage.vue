@@ -2,6 +2,7 @@
 import { useSessionStore } from '@/stores/session'
 import SessionSetup from '@/components/session/SessionSetup.vue'
 import StudyingPhase from '@/components/session/StudyingPhase.vue'
+import ReviewPhase from '@/components/session/ReviewPhase.vue'
 import EnergyCheckin from '@/components/session/EnergyCheckin.vue'
 import BreakPhase from '@/components/session/BreakPhase.vue'
 import SessionFinished from '@/components/session/SessionFinished.vue'
@@ -17,6 +18,9 @@ const session = useSessionStore()
 
       <!-- Studying -->
       <StudyingPhase v-else-if="session.phase === 'studying'" />
+
+      <!-- Error Review -->
+      <ReviewPhase v-else-if="session.phase === 'review'" />
 
       <!-- Energy Check-in -->
       <EnergyCheckin v-else-if="session.phase === 'checkin'" />

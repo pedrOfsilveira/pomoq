@@ -18,6 +18,8 @@ const bgColor = computed(() => {
   switch (session.phase) {
     case 'studying':
       return 'bg-pomo-red'
+    case 'review':
+      return 'bg-pomo-blue'
     case 'break':
       return 'bg-pomo-green'
     case 'checkin':
@@ -33,6 +35,7 @@ const bgColor = computed(() => {
 // (PWA bounce/pull-to-refresh) show the correct phase color instead of red.
 const phaseBodyColor: Record<string, string> = {
   studying: '#8B3F3F',
+  review: '#3B4E80',
   break: '#3B7272',
   checkin: '#3B4E80',
   finished: '#2F5E5E',

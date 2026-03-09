@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed, watch } from 'vue'
+import { onMounted, computed, watch, ref } from 'vue'
 import { useHistoryStore } from '@/stores/history'
 import { useAuthStore } from '@/stores/auth'
 import AccuracyLineChart from '@/components/charts/AccuracyLineChart.vue'
@@ -7,7 +7,13 @@ import WeeklyVolumeChart from '@/components/charts/WeeklyVolumeChart.vue'
 import DisciplineDonutChart from '@/components/charts/DisciplineDonutChart.vue'
 import EnergyTrendChart from '@/components/charts/EnergyTrendChart.vue'
 import DailyVolumeChart from '@/components/charts/DailyVolumeChart.vue'
-import { ChevronLeft, BarChart3 } from 'lucide-vue-next'
+import { ChevronLeft, BarChart3, ChevronDown } from 'lucide-vue-next'
+
+const REASON_META: Record<'attention' | 'content_gap' | 'interpretation', { label: string; barClass: string }> = {
+  attention:       { label: 'Falta de atenção',    barClass: 'bg-energy-yellow' },
+  content_gap:     { label: 'Lacuna no conteúdo',  barClass: 'bg-energy-red'    },
+  interpretation:  { label: 'Interpretação',        barClass: 'bg-white/60'      },
+}
 
 const history = useHistoryStore()
 const auth = useAuthStore()
@@ -48,7 +54,23 @@ const disciplineChartData = computed(() =>
   })),
 )
 
-// Best discipline colored badge
+// Expanded discipline rows
+const expandedDisciplines = ref<Set<string>>(new Set())
+function toggleDiscipline(name: string) {
+  if (expandedDisciplines.value.has(name)) {
+    expandedDisciplines.value.delete(name)
+  } else {
+    expandedDisciplines.value.add(name)
+  }
+  // trigger reactivity
+  expandedDisciplines.value = new Set(expandedDisciplines.value)
+}
+
+// Error reason stats indexed by discipline
+const errorReasonByDiscipline = computed(() => {
+  const map = new Map(history.errorReasonStats.map((s) => [s.discipline, s]))
+  return map
+})
 const bestColor = computed(() => {
   if (!history.bestDiscipline) return ''
   if (history.bestDiscipline.accuracy >= 80) return 'text-energy-green'
@@ -197,51 +219,122 @@ const worstColor = computed(() => {
           <DisciplineDonutChart :data="disciplineChartData" />
         </div>
 
-        <!-- Discipline accuracy table -->
+        <!-- Discipline accuracy table (expandable with error reasons) -->
         <div v-if="history.disciplineStats.length > 0" class="bg-white/10 rounded-2xl p-5">
-          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">
-            Precisão por Disciplina
-          </h2>
+          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">Precisão por Disciplina</h2>
           <div class="space-y-2">
             <div
               v-for="d in history.disciplineStats"
               :key="d.discipline"
-              class="flex items-center justify-between bg-white/5 rounded-lg p-3"
+              class="bg-white/5 rounded-lg overflow-hidden"
             >
-              <div class="flex-1 min-w-0">
-                <div class="text-white font-medium text-sm truncate">{{ d.discipline }}</div>
-                <div class="text-white/60 text-xs">
-                  {{ d.totalQuestions }} questões · {{ d.cycles }} ciclos
+              <!-- Summary row (always visible) -->
+              <button
+                class="w-full flex items-center justify-between p-3 text-left cursor-pointer hover:bg-white/5 transition-colors"
+                @click="toggleDiscipline(d.discipline)"
+              >
+                <div class="flex-1 min-w-0">
+                  <div class="text-white font-medium text-sm truncate">{{ d.discipline }}</div>
+                  <div class="text-white/60 text-xs">
+                    {{ d.totalQuestions }} questões · {{ d.cycles }} ciclos
+                  </div>
                 </div>
-              </div>
-              <div class="flex items-center gap-3 ml-3">
-                <!-- Mini progress bar -->
-                <div class="w-20 h-2 bg-white/10 rounded-full overflow-hidden hidden sm:block">
-                  <div
-                    class="h-full rounded-full transition-all"
+                <div class="flex items-center gap-3 ml-3">
+                  <!-- Mini progress bar -->
+                  <div class="w-20 h-2 bg-white/10 rounded-full overflow-hidden hidden sm:block">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="
+                        d.accuracy >= 80
+                          ? 'bg-energy-green'
+                          : d.accuracy >= 60
+                            ? 'bg-energy-yellow'
+                            : 'bg-energy-red'
+                      "
+                      :style="{ width: d.accuracy + '%' }"
+                    />
+                  </div>
+                  <span
+                    class="text-sm font-bold w-12 text-right"
                     :class="
                       d.accuracy >= 80
-                        ? 'bg-energy-green'
+                        ? 'text-energy-green'
                         : d.accuracy >= 60
-                          ? 'bg-energy-yellow'
-                          : 'bg-energy-red'
+                          ? 'text-energy-yellow'
+                          : 'text-energy-red'
                     "
-                    :style="{ width: `${d.accuracy}%` }"
+                  >
+                    {{ d.accuracy }}%
+                  </span>
+                  <ChevronDown
+                    v-if="errorReasonByDiscipline.get(d.discipline)"
+                    class="w-4 h-4 text-white/40 transition-transform shrink-0"
+                    :class="expandedDisciplines.has(d.discipline) ? 'rotate-180' : ''"
+                    :stroke-width="2"
                   />
+                  <span v-else class="w-4" />
                 </div>
-                <span
-                  class="text-sm font-bold min-w-[3rem] text-right"
-                  :class="
-                    d.accuracy >= 80
-                      ? 'text-energy-green'
-                      : d.accuracy >= 60
-                        ? 'text-energy-yellow'
-                        : 'text-energy-red'
-                  "
+              </button>
+
+              <!-- Expandable error detail -->
+              <Transition name="expand">
+                <div
+                  v-if="expandedDisciplines.has(d.discipline) && errorReasonByDiscipline.get(d.discipline)"
+                  class="px-3 pb-3 border-t border-white/10"
                 >
-                  {{ d.accuracy }}%
-                </span>
-              </div>
+                  <div class="pt-3 space-y-2">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-white/50 text-[10px] uppercase tracking-wider">Padrão de erros</span>
+                      <span class="text-white/40 text-xs">{{ errorReasonByDiscipline.get(d.discipline)!.total }} erro{{ errorReasonByDiscipline.get(d.discipline)!.total !== 1 ? 's' : '' }}</span>
+                    </div>
+
+                    <!-- Reason rows -->
+                    <div
+                      v-for="key in (['attention', 'content_gap', 'interpretation'] as const)"
+                      :key="key"
+                      class="flex items-center gap-2"
+                    >
+                      <span class="text-white/60 text-xs w-36 shrink-0">{{ REASON_META[key].label }}</span>
+                      <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          class="h-full rounded-full"
+                          :class="REASON_META[key].barClass"
+                          :style="{
+                            width:
+                              errorReasonByDiscipline.get(d.discipline)!.total > 0
+                                ? Math.round(
+                                    (errorReasonByDiscipline.get(d.discipline)![key] /
+                                      errorReasonByDiscipline.get(d.discipline)!.total) *
+                                      100,
+                                  ) + '%'
+                                : '0%',
+                          }"
+                        />
+                      </div>
+                      <span class="text-white/50 text-xs w-4 text-right shrink-0">
+                        {{ errorReasonByDiscipline.get(d.discipline)![key] }}
+                      </span>
+                    </div>
+
+                    <!-- Content gap notes -->
+                    <div
+                      v-if="errorReasonByDiscipline.get(d.discipline)!.contentNotes.length > 0"
+                      class="pt-2 mt-1 border-t border-white/10"
+                    >
+                      <p class="text-white/40 text-[10px] uppercase tracking-wider mb-1.5">Conteúdos a revisar</p>
+                      <div class="flex flex-wrap gap-1.5">
+                        <span
+                          v-for="note in errorReasonByDiscipline.get(d.discipline)!.contentNotes"
+                          :key="note"
+                          class="px-2 py-0.5 bg-white/10 text-white/70 rounded text-xs"
+                        >
+                          {{ note }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
             </div>
           </div>
         </div>
@@ -317,3 +410,21 @@ const worstColor = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+}
+.expand-enter-to,
+.expand-leave-from {
+  opacity: 1;
+  max-height: 400px;
+}
+</style>

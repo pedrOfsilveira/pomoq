@@ -8,10 +8,24 @@ export type SessionPhase =
   | 'idle' // No session active
   | 'setup' // Configuring session
   | 'studying' // Answering questions
+  | 'review' // Reviewing errors after micro-cycle
   | 'checkin' // Energy check-in after cycle
   | 'break' // Break time
-  | 'review' // Reviewing errors
   | 'finished' // Session ended
+
+export type ErrorReason = 'attention' | 'content_gap' | 'interpretation'
+
+export interface ReviewEntry {
+  correct: boolean
+  errorReason?: ErrorReason
+  contentNote?: string
+}
+
+export interface ErrorReview {
+  questionIndex: number // 0-based index among all questions
+  errorReason: ErrorReason
+  contentNote?: string
+}
 
 export interface CycleState {
   id: string | null
@@ -38,6 +52,9 @@ export const useSessionStore = defineStore('session', () => {
   const totalQuestions = ref(0)
   const totalCorrect = ref(0)
   const lastEnergy = ref<EnergyLevel | null>(null)
+
+  // Per-cycle error reviews
+  const cycleErrorReviews = ref<ErrorReview[]>([])
 
   // Break timer
   const breakSeconds = ref(0)
@@ -155,31 +172,59 @@ export const useSessionStore = defineStore('session', () => {
       startedAt: data[0]!.started_at,
     }
 
+    cycleErrorReviews.value = []
+
     phase.value = 'studying'
   }
 
-  // Record an answer
-  async function recordAnswer(correct: boolean) {
+  // Record a question being done (no correct/wrong — that happens in review)
+  async function recordAnswer() {
     if (!currentCycle.value || !currentCycle.value.id) return
 
     currentCycle.value.questionsDone++
-    if (correct) currentCycle.value.questionsCorrect++
     totalQuestions.value++
-    if (correct) totalCorrect.value++
 
     // Update in database
     await supabase
       .from('cycles')
-      .update({
-        questions_done: currentCycle.value.questionsDone,
-        questions_correct: currentCycle.value.questionsCorrect,
-      })
+      .update({ questions_done: currentCycle.value.questionsDone })
       .eq('id', currentCycle.value.id)
 
-    // Check if cycle is complete
+    // Cycle complete → always go to review
     if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
-      phase.value = 'checkin'
+      phase.value = 'review'
     }
+  }
+
+  // Submit per-question review (correct/wrong + error reasons) and proceed to check-in
+  async function submitReview(reviews: ReviewEntry[]) {
+    if (!currentCycle.value) return
+
+    const correctCount = reviews.filter((r) => r.correct).length
+    currentCycle.value.questionsCorrect = correctCount
+    totalCorrect.value += correctCount
+
+    // Build error reviews payload
+    const errorReviews = reviews
+      .map((r, i) => ({ ...r, questionIndex: i }))
+      .filter((r) => !r.correct)
+      .map((r) => ({
+        questionIndex: r.questionIndex,
+        errorReason: r.errorReason as ErrorReason,
+        contentNote: r.contentNote,
+      }))
+
+    cycleErrorReviews.value = errorReviews
+
+    // Persist to DB
+    if (currentCycle.value.id) {
+      await supabase
+        .from('cycles')
+        .update({ questions_correct: correctCount, error_reviews: errorReviews })
+        .eq('id', currentCycle.value.id)
+    }
+
+    phase.value = 'checkin'
   }
 
   // Submit energy check-in
@@ -308,6 +353,7 @@ export const useSessionStore = defineStore('session', () => {
     questionsPerBlock.value = 5
     currentDisciplineIndex.value = 0
     currentCycle.value = null
+    cycleErrorReviews.value = []
     totalCycles.value = 0
     totalQuestions.value = 0
     totalCorrect.value = 0
@@ -322,6 +368,7 @@ export const useSessionStore = defineStore('session', () => {
     questionsPerBlock,
     currentDisciplineIndex,
     currentCycle,
+    cycleErrorReviews,
     totalCycles,
     totalQuestions,
     totalCorrect,
@@ -337,6 +384,7 @@ export const useSessionStore = defineStore('session', () => {
     startSession,
     startNewCycle,
     recordAnswer,
+    submitReview,
     submitCheckin,
     startBreak,
     endBreak,

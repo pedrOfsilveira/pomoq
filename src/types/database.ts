@@ -1,4 +1,11 @@
 export type EnergyLevel = 'green' | 'yellow' | 'red'
+export type ErrorReason = 'attention' | 'content_gap' | 'interpretation'
+
+export interface ErrorReviewRecord {
+  questionIndex: number
+  errorReason: ErrorReason
+  contentNote?: string
+}
 
 export type Database = {
   public: {
@@ -97,6 +104,7 @@ export type Database = {
           started_at: string
           ended_at: string | null
           break_duration_seconds: number
+          error_reviews: ErrorReviewRecord[] | null
           created_at: string
         }
         Insert: {
@@ -112,6 +120,7 @@ export type Database = {
           started_at?: string
           ended_at?: string | null
           break_duration_seconds?: number
+          error_reviews?: ErrorReviewRecord[] | null
           created_at?: string
         }
         Update: {
@@ -127,6 +136,7 @@ export type Database = {
           started_at?: string
           ended_at?: string | null
           break_duration_seconds?: number
+          error_reviews?: ErrorReviewRecord[] | null
           created_at?: string
         }
         Relationships: [

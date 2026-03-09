@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
-import type { EnergyLevel } from '@/types/database'
+import type { EnergyLevel, ErrorReviewRecord, ErrorReason } from '@/types/database'
 
 interface SessionSummary {
   id: string
@@ -24,6 +24,17 @@ interface CycleSummary {
   energy_before: EnergyLevel | null
   energy_after: EnergyLevel | null
   started_at: string
+  error_reviews: ErrorReviewRecord[] | null
+}
+
+export interface ErrorReasonStat {
+  discipline: string
+  attention: number
+  content_gap: number
+  interpretation: number
+  total: number
+  topReason: ErrorReason
+  contentNotes: string[]
 }
 
 interface DailyStats {
@@ -215,6 +226,43 @@ export const useHistoryStore = defineStore('history', () => {
     }))
   })
 
+  // Error reason breakdown per discipline
+  const errorReasonStats = computed<ErrorReasonStat[]>(() => {
+    const map = new Map<string, ErrorReasonStat>()
+    for (const c of cycles.value) {
+      if (!c.error_reviews || c.error_reviews.length === 0) continue
+      for (const review of c.error_reviews) {
+        let stat = map.get(c.discipline)
+        if (!stat) {
+          stat = {
+            discipline: c.discipline,
+            attention: 0,
+            content_gap: 0,
+            interpretation: 0,
+            total: 0,
+            topReason: review.errorReason,
+            contentNotes: [],
+          }
+          map.set(c.discipline, stat)
+        }
+        stat[review.errorReason]++
+        stat.total++
+        if (review.errorReason === 'content_gap' && review.contentNote) {
+          const note = review.contentNote.trim()
+          if (note && !stat.contentNotes.includes(note)) {
+            stat.contentNotes.push(note)
+          }
+        }
+      }
+    }
+    // Compute topReason per discipline
+    for (const stat of map.values()) {
+      const reasons: ErrorReason[] = ['attention', 'content_gap', 'interpretation']
+      stat.topReason = reasons.reduce((a, b) => (stat[a] >= stat[b] ? a : b))
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total)
+  })
+
   // Best and worst disciplines
   const bestDiscipline = computed(() => {
     if (disciplineStats.value.length === 0) return null
@@ -246,7 +294,7 @@ export const useHistoryStore = defineStore('history', () => {
         supabase
           .from('cycles')
           .select(
-            'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at',
+            'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
           )
           .order('started_at', { ascending: false })
           .limit(500),
@@ -279,6 +327,7 @@ export const useHistoryStore = defineStore('history', () => {
     energyTrend,
     weeklyVolume,
     accuracyTrend,
+    errorReasonStats,
     bestDiscipline,
     worstDiscipline,
     fetchSessions,

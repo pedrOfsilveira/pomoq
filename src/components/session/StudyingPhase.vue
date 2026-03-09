@@ -4,25 +4,21 @@ import { useSessionStore } from '@/stores/session'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
-import { Check, X } from 'lucide-vue-next'
+import { ArrowRight } from 'lucide-vue-next'
 
 const session = useSessionStore()
 const showConfirmEnd = ref(false)
 
 // Large display: questions done / target
 const displayDone = computed(() =>
-  String(session.currentCycle?.questionsDone ?? 0).padStart(2, '0'),
+  String((session.currentCycle?.questionsDone ?? 0) + 1).padStart(2, '0'),
 )
 const displayTarget = computed(() =>
   String(session.currentCycle?.questionsTarget ?? 0).padStart(2, '0'),
 )
 
-function answerCorrect() {
-  session.recordAnswer(true)
-}
-
-function answerWrong() {
-  session.recordAnswer(false)
+function nextQuestion() {
+  session.recordAnswer()
 }
 
 function confirmEnd() {
@@ -72,31 +68,16 @@ async function doEnd() {
           size="md"
         />
       </div>
-
-      <!-- Accuracy -->
-      <div
-        v-if="session.currentCycle && session.currentCycle.questionsDone > 0"
-        class="mt-4 text-white/70 text-sm"
-      >
-        Acertos: {{ session.accuracy }}%
-      </div>
     </div>
 
-    <!-- Answer buttons -->
-    <div class="grid grid-cols-2 gap-3 mb-4">
+    <!-- Next question button -->
+    <div class="mb-4">
       <button
-        class="btn-answer btn-answer--green inline-flex items-center justify-center font-semibold rounded-lg px-8 py-3.5 text-lg text-white cursor-pointer transition-all duration-150"
-        @click="answerCorrect"
+        class="btn-answer btn-answer--next inline-flex items-center justify-center font-semibold rounded-lg w-full py-4 text-lg text-white cursor-pointer transition-all duration-150"
+        @click="nextQuestion"
       >
-        <Check class="w-5 h-5 mr-1.5" :stroke-width="2.5" />
-        Acertei
-      </button>
-      <button
-        class="btn-answer btn-answer--red inline-flex items-center justify-center font-semibold rounded-lg px-8 py-3.5 text-lg text-white cursor-pointer transition-all duration-150"
-        @click="answerWrong"
-      >
-        <X class="w-5 h-5 mr-1.5" :stroke-width="2.5" />
-        Errei
+        Próxima questão
+        <ArrowRight class="w-5 h-5 ml-2" :stroke-width="2.5" />
       </button>
     </div>
 
@@ -152,7 +133,6 @@ async function doEnd() {
 </template>
 
 <style scoped>
-/* 3D raised answer buttons with colored shadows */
 .btn-answer {
   box-shadow: 0 5px 0 var(--btn-shadow);
 }
@@ -161,19 +141,11 @@ async function doEnd() {
   transform: translateY(5px);
 }
 
-.btn-answer--green {
-  --btn-shadow: oklch(0.5 0.14 152);
-  background: oklch(0.62 0.17 152);
+.btn-answer--next {
+  --btn-shadow: oklch(0.35 0.05 250);
+  background: oklch(0.48 0.08 250);
 }
-.btn-answer--green:hover {
-  background: oklch(0.66 0.17 152);
-}
-
-.btn-answer--red {
-  --btn-shadow: oklch(0.45 0.1 20);
-  background: oklch(0.58 0.15 20);
-}
-.btn-answer--red:hover {
-  background: oklch(0.62 0.15 20);
+.btn-answer--next:hover {
+  background: oklch(0.52 0.08 250);
 }
 </style>
