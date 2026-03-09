@@ -7,7 +7,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { triggerInstall, canInstall } = usePwaInstall()
+const { triggerInstall } = usePwaInstall()
 
 const installing = ref(false)
 
@@ -130,19 +130,11 @@ function handleDismiss() {
           <!-- Actions -->
           <div class="flex gap-3">
             <button
-              v-if="canInstall"
               class="flex-1 bg-pomo-red text-white font-semibold text-sm py-3 px-4 rounded-xl active:scale-95 transition-transform disabled:opacity-60"
               :disabled="installing"
               @click="handleInstall"
             >
-              {{ installing ? 'Instalando…' : 'Instalar agora' }}
-            </button>
-            <button
-              v-else
-              class="flex-1 bg-pomo-red text-white font-semibold text-sm py-3 px-4 rounded-xl active:scale-95 transition-transform"
-              @click="handleDismiss"
-            >
-              Entendido
+              {{ installing ? 'Instalando…' : 'Instalar' }}
             </button>
             <button
               class="flex-1 border border-border text-text-secondary font-medium text-sm py-3 px-4 rounded-xl active:scale-95 transition-transform"

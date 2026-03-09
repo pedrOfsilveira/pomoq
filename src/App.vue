@@ -56,11 +56,11 @@ watch(
   { immediate: true },
 )
 
-// Show install prompt once the browser signals it can install AND the user is authenticated
+// Show install prompt once right after the user first logs in
 watch(
-  () => canInstall.value && auth.isAuthenticated,
-  (ready) => {
-    if (ready && !hasBeenPrompted()) {
+  () => auth.isAuthenticated,
+  (authenticated, wasAuthenticated) => {
+    if (authenticated && !wasAuthenticated && !hasBeenPrompted()) {
       setTimeout(() => {
         showInstallPrompt.value = true
       }, 1200)
@@ -77,8 +77,9 @@ onMounted(() => {
   setupListeners()
   syncBodyColor(session.phase, auth.isAuthenticated)
 
-  // If canInstall + auth are already true at mount time, the watcher won't fire — check here too.
-  if (canInstall.value && auth.isAuthenticated && !hasBeenPrompted()) {
+  // If user was already authenticated on page load (session restored before mount),
+  // the watcher won't fire — so we check here too.
+  if (auth.isAuthenticated && !hasBeenPrompted()) {
     setTimeout(() => {
       showInstallPrompt.value = true
     }, 1200)
