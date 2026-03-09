@@ -45,6 +45,33 @@ function addCustomDiscipline() {
   }
 }
 
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+function onDragStart(index: number) {
+  dragIndex.value = index
+}
+
+function onDragOver(index: number) {
+  if (dragIndex.value === null || dragIndex.value === index) return
+  dragOverIndex.value = index
+}
+
+function onDrop(index: number) {
+  if (dragIndex.value === null || dragIndex.value === index) return
+  const arr = [...selectedDisciplines.value]
+  const [item] = arr.splice(dragIndex.value, 1)
+  arr.splice(index, 0, item)
+  selectedDisciplines.value = arr
+  dragIndex.value = null
+  dragOverIndex.value = null
+}
+
+function onDragEnd() {
+  dragIndex.value = null
+  dragOverIndex.value = null
+}
+
 const errorMsg = ref('')
 
 async function start() {
@@ -150,6 +177,36 @@ async function start() {
             &times;
           </button>
         </span>
+      </div>
+
+      <!-- Order of selected disciplines -->
+      <div v-if="selectedDisciplines.length >= 2" class="mt-4">
+        <h4 class="text-white/60 text-xs font-medium uppercase tracking-wider mb-2 text-left">
+          Ordem de estudo
+        </h4>
+        <ul class="space-y-1">
+          <li
+            v-for="(d, i) in selectedDisciplines"
+            :key="d"
+            draggable="true"
+            @dragstart="onDragStart(i)"
+            @dragover.prevent="onDragOver(i)"
+            @drop.prevent="onDrop(i)"
+            @dragend="onDragEnd"
+            class="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors cursor-grab active:cursor-grabbing select-none"
+            :class="dragOverIndex === i && dragIndex !== i ? 'bg-white/30 ring-1 ring-white/50' : 'bg-white/10'"
+          >
+            <span class="text-white/40 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+                <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+              </svg>
+            </span>
+            <span class="text-white/40 text-xs w-4 text-right shrink-0">{{ i + 1 }}</span>
+            <span class="flex-1 text-white text-sm font-medium text-left truncate">{{ d }}</span>
+          </li>
+        </ul>
       </div>
     </div>
 
