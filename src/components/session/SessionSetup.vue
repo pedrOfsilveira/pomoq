@@ -61,6 +61,7 @@ function onDrop(index: number) {
   if (dragIndex.value === null || dragIndex.value === index) return
   const arr = [...selectedDisciplines.value]
   const [item] = arr.splice(dragIndex.value, 1)
+  if (item === undefined) return
   arr.splice(index, 0, item)
   selectedDisciplines.value = arr
   dragIndex.value = null
