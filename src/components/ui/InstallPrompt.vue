@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 
 defineProps<{ visible: boolean }>()
@@ -8,12 +9,21 @@ const emit = defineEmits<{
 
 const { triggerInstall, canInstall } = usePwaInstall()
 
+const installing = ref(false)
+
 async function handleInstall() {
-  await triggerInstall()
-  emit('close')
+  if (installing.value) return
+  installing.value = true
+  try {
+    await triggerInstall()
+  } finally {
+    installing.value = false
+    emit('close')
+  }
 }
 
 function handleDismiss() {
+  if (installing.value) return
   emit('close')
 }
 </script>
@@ -25,7 +35,7 @@ function handleDismiss() {
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4"
     >
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="handleDismiss" />
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="!installing && handleDismiss()" />
 
       <!-- Card -->
       <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -121,10 +131,11 @@ function handleDismiss() {
           <div class="flex gap-3">
             <button
               v-if="canInstall"
-              class="flex-1 bg-pomo-red text-white font-semibold text-sm py-3 px-4 rounded-xl active:scale-95 transition-transform"
+              class="flex-1 bg-pomo-red text-white font-semibold text-sm py-3 px-4 rounded-xl active:scale-95 transition-transform disabled:opacity-60"
+              :disabled="installing"
               @click="handleInstall"
             >
-              Instalar agora
+              {{ installing ? 'Instalando…' : 'Instalar agora' }}
             </button>
             <button
               v-else

@@ -46,7 +46,7 @@ export function usePwaInstall() {
   async function triggerInstall() {
     if (!deferredPrompt.value) return false
     const promptEvent = deferredPrompt.value as BeforeInstallPromptEvent
-    promptEvent.prompt()
+    await promptEvent.prompt()
     const { outcome } = await promptEvent.userChoice
     deferredPrompt.value = null
     canInstall.value = false
