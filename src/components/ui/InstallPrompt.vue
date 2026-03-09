@@ -12,26 +12,29 @@ const installing = ref(false)
 
 async function handleInstall() {
   if (installing.value) return
+
+  console.log('[PWA] Install button clicked')
+  console.log('[PWA] deferredPrompt available:', !!deferredPrompt.value, deferredPrompt.value)
+
+  if (!deferredPrompt.value) {
+    console.warn(
+      '[PWA] deferredPrompt is null — Chrome did not fire beforeinstallprompt.\n' +
+      'Checklist: HTTPS (or localhost), valid manifest with PNG icons (192 + 512), active Service Worker.'
+    )
+    emit('close')
+    return
+  }
+
   installing.value = true
-  
+
   try {
-    // Verifica se o evento nativo já está pronto (o PWA pode ser instalado)
-    if (deferredPrompt.value) {
-      // O triggerInstall já retorna um booleano dizendo se o usuário aceitou ou não
-      const accepted = await triggerInstall()
-      
-      if (accepted) {
-        console.log("PWA Instalado com sucesso!")
-      } else {
-        console.log("Usuário cancelou a instalação do PWA.")
-      }
-    } else {
-      console.warn("O prompt de instalação não está disponível no momento.")
-    }
+    // prompt() shows the native Chrome install banner.
+    // We await userChoice so the modal only closes AFTER the user decides.
+    const accepted = await triggerInstall()
+    console.log('[PWA] Install outcome:', accepted ? '✓ accepted' : '✗ dismissed')
   } catch (error) {
-    console.error("Erro ao tentar instalar o PWA:", error)
+    console.error('[PWA] Error during install:', error)
   } finally {
-    // Só fecha o seu modal customizado DEPOIS que o usuário interagir com o balão do Chrome
     installing.value = false
     emit('close')
   }

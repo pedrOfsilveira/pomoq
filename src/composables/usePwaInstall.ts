@@ -1,12 +1,34 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
-// Shared state across the app
+// Shared state across all composable instances
 const deferredPrompt = ref<Event | null>(null)
 const canInstall = ref(false)
 const isInstalled = ref(false)
 
-let promptHandler: ((e: Event) => void) | null = null
-let appInstalledHandler: (() => void) | null = null
+// ─── CRITICAL: register the listener at module load time ───────────────────────
+// `beforeinstallprompt` fires very early in the page lifecycle — often before
+// DOMContentLoaded and always before any Vue component's onMounted runs.
+// Registering inside onMounted means the event is ALWAYS missed.
+// ───────────────────────────────────────────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    isInstalled.value = true
+  }
+
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    console.log('[PWA] beforeinstallprompt captured ✓')
+    e.preventDefault()
+    deferredPrompt.value = e
+    canInstall.value = true
+  })
+
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] appinstalled fired ✓')
+    isInstalled.value = true
+    canInstall.value = false
+    deferredPrompt.value = null
+  })
+}
 
 export function usePwaInstall() {
   const STORAGE_KEY = 'pomoq-pwa-install-prompted'
@@ -14,40 +36,19 @@ export function usePwaInstall() {
   const hasBeenPrompted = () => localStorage.getItem(STORAGE_KEY) === 'true'
   const markAsPrompted = () => localStorage.setItem(STORAGE_KEY, 'true')
 
-  function setupListeners() {
-    // Check if already running as installed PWA
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      isInstalled.value = true
-      return
-    }
-
-    promptHandler = (e: Event) => {
-      e.preventDefault()
-      deferredPrompt.value = e
-      canInstall.value = true
-    }
-
-    appInstalledHandler = () => {
-      isInstalled.value = true
-      canInstall.value = false
-      deferredPrompt.value = null
-      markAsPrompted()
-    }
-
-    window.addEventListener('beforeinstallprompt', promptHandler)
-    window.addEventListener('appinstalled', appInstalledHandler)
-  }
-
-  function teardownListeners() {
-    if (promptHandler) window.removeEventListener('beforeinstallprompt', promptHandler)
-    if (appInstalledHandler) window.removeEventListener('appinstalled', appInstalledHandler)
-  }
+  // Kept for API compatibility — real listeners are registered at module level.
+  function setupListeners() {}
+  function teardownListeners() {}
 
   async function triggerInstall() {
-    if (!deferredPrompt.value) return false
+    if (!deferredPrompt.value) {
+      console.warn('[PWA] triggerInstall called but deferredPrompt is null')
+      return false
+    }
     const promptEvent = deferredPrompt.value as BeforeInstallPromptEvent
     await promptEvent.prompt()
     const { outcome } = await promptEvent.userChoice
+    console.log('[PWA] User choice:', outcome)
     deferredPrompt.value = null
     canInstall.value = false
     markAsPrompted()
@@ -66,7 +67,6 @@ export function usePwaInstall() {
   }
 }
 
-// Extend Window type for TypeScript
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
