@@ -5,6 +5,7 @@ import { useAuthStore } from './auth'
 import type { EnergyLevel } from '@/types/database'
 
 const STORAGE_KEY = 'pomoq_session'
+const PREFS_KEY = 'pomoq_prefs'
 
 export type SessionPhase =
   | 'idle' // No session active
@@ -55,6 +56,32 @@ export const useSessionStore = defineStore('session', () => {
   const totalCorrect = ref(0)
   const lastEnergy = ref<EnergyLevel | null>(null)
   const forcedRest = ref(false)
+
+  // ── User preferences (persisted separately, survive reset) ─────────────────
+  const loopDisciplines = ref(false)
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ loopDisciplines: loopDisciplines.value }))
+    } catch {
+      // ignore
+    }
+  }
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY)
+      if (!raw) return
+      const p = JSON.parse(raw)
+      loopDisciplines.value = p.loopDisciplines ?? false
+    } catch {
+      // ignore
+    }
+  }
+
+  watch(loopDisciplines, savePrefs)
+  loadPrefs()
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Per-cycle error reviews
   const cycleErrorReviews = ref<ErrorReview[]>([])
@@ -367,6 +394,7 @@ export const useSessionStore = defineStore('session', () => {
 
     // Start break
     breakTarget.value = getBreakDuration(energy)
+    startBreak()
     phase.value = 'break'
   }
 
@@ -379,15 +407,25 @@ export const useSessionStore = defineStore('session', () => {
     }, 1000)
   }
 
-  // End break and move to next cycle
-  function endBreak() {
+  // End break and move to next cycle (or end the session after the last discipline)
+  async function endBreak() {
     if (breakInterval) {
       clearInterval(breakInterval)
       breakInterval = null
     }
 
-    // Rotate to next discipline
-    currentDisciplineIndex.value = (currentDisciplineIndex.value + 1) % disciplines.value.length
+    const isLastDiscipline = currentDisciplineIndex.value >= disciplines.value.length - 1
+
+    if (isLastDiscipline && !loopDisciplines.value) {
+      // Default behaviour: end the session after the last discipline
+      await endSession()
+      return
+    }
+
+    // Rotate to next discipline (loop back to start when enabled)
+    currentDisciplineIndex.value = loopDisciplines.value
+      ? (currentDisciplineIndex.value + 1) % disciplines.value.length
+      : currentDisciplineIndex.value + 1
 
     startNewCycle()
   }
@@ -462,6 +500,7 @@ export const useSessionStore = defineStore('session', () => {
     phase,
     disciplines,
     questionsPerBlock,
+    loopDisciplines,
     currentDisciplineIndex,
     currentCycle,
     cycleErrorReviews,

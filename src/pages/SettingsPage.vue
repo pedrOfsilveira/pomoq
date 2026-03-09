@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useSessionStore } from '@/stores/session'
 import AppButton from '@/components/ui/AppButton.vue'
 import { ChevronLeft } from 'lucide-vue-next'
 
 const auth = useAuthStore()
+const session = useSessionStore()
 
 const displayName = ref('')
 const questionsPerBlock = ref(5)
@@ -131,6 +133,28 @@ async function save() {
           max="10"
           class="w-full accent-white mb-6"
         />
+
+        <!-- Cycle mode -->
+        <label class="flex items-start justify-between gap-4 cursor-pointer mb-6 select-none">
+          <div>
+            <p class="text-white text-sm font-medium">Ciclo contínuo de disciplinas</p>
+            <p class="text-white/60 text-xs mt-0.5">
+              Quando ativado, a sessão reinicia do início após a última disciplina em vez de encerrar.
+            </p>
+          </div>
+          <button
+            role="switch"
+            :aria-checked="session.loopDisciplines"
+            @click="session.loopDisciplines = !session.loopDisciplines"
+            class="relative inline-flex h-6 w-11 shrink-0 mt-0.5 items-center rounded-full transition-colors cursor-pointer border-0 outline-none focus:ring-2 focus:ring-white/40"
+            :class="session.loopDisciplines ? 'bg-white/80' : 'bg-white/20'"
+          >
+            <span
+              class="inline-block h-4 w-4 rounded-full bg-gray-800 transition-transform"
+              :class="session.loopDisciplines ? 'translate-x-6' : 'translate-x-1'"
+            />
+          </button>
+        </label>
 
         <label class="block mb-2 text-white/70 text-sm">Disciplinas padrão</label>
         <div class="flex flex-wrap gap-2 mb-3">

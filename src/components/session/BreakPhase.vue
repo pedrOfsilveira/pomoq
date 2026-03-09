@@ -39,7 +39,6 @@ const randomMessage = messages[Math.floor(Math.random() * messages.length)]
 let skipTimer: ReturnType<typeof setTimeout>
 
 onMounted(() => {
-  session.startBreak()
   skipTimer = setTimeout(() => {
     canSkip.value = true
   }, 30000)
@@ -49,8 +48,8 @@ onUnmounted(() => {
   clearTimeout(skipTimer)
 })
 
-function endBreakAndContinue() {
-  session.endBreak()
+async function endBreakAndContinue() {
+  await session.endBreak()
 }
 
 async function endSessionNow() {
@@ -133,10 +132,20 @@ async function endSessionNow() {
 
     <!-- Next discipline preview -->
     <div class="mt-6 bg-white/10 rounded-xl p-3">
-      <p class="text-white/60 text-xs">Próxima disciplina</p>
-      <p class="text-white font-semibold">
-        {{ session.disciplines[(session.currentDisciplineIndex + 1) % session.disciplines.length] }}
-      </p>
+      <template v-if="session.currentDisciplineIndex < session.disciplines.length - 1">
+        <p class="text-white/60 text-xs">Próxima disciplina</p>
+        <p class="text-white font-semibold">
+          {{ session.disciplines[session.currentDisciplineIndex + 1] }}
+        </p>
+      </template>
+      <template v-else-if="session.loopDisciplines">
+        <p class="text-white/60 text-xs">Próxima disciplina (reiniciando ciclo)</p>
+        <p class="text-white font-semibold">{{ session.disciplines[0] }}</p>
+      </template>
+      <template v-else>
+        <p class="text-white/60 text-xs">Última disciplina concluída</p>
+        <p class="text-white font-semibold">A sessão encerrará após esta pausa</p>
+      </template>
     </div>
   </div>
 </template>
