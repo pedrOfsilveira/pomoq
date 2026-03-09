@@ -8,17 +8,24 @@ import { ArrowRight } from 'lucide-vue-next'
 
 const session = useSessionStore()
 const showConfirmEnd = ref(false)
+const answering = ref(false)
 
 // Large display: questions done / target
 const displayDone = computed(() =>
-  String((session.currentCycle?.questionsDone ?? 0) + 1).padStart(2, '0'),
+  String(session.currentCycle?.questionsDone ?? 0).padStart(2, '0'),
 )
 const displayTarget = computed(() =>
   String(session.currentCycle?.questionsTarget ?? 0).padStart(2, '0'),
 )
 
-function nextQuestion() {
-  session.recordAnswer()
+async function nextQuestion() {
+  if (answering.value) return
+  answering.value = true
+  try {
+    await session.recordAnswer()
+  } finally {
+    answering.value = false
+  }
 }
 
 function confirmEnd() {
@@ -73,11 +80,17 @@ async function doEnd() {
     <!-- Next question button -->
     <div class="mb-4">
       <button
-        class="btn-answer btn-answer--next inline-flex items-center justify-center font-semibold rounded-lg w-full py-4 text-lg text-white cursor-pointer transition-all duration-150"
+        class="btn-answer btn-answer--next inline-flex items-center justify-center font-semibold rounded-lg w-full py-4 text-lg text-white transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+        :class="answering ? 'cursor-not-allowed' : 'cursor-pointer'"
+        :disabled="answering"
         @click="nextQuestion"
       >
+        <svg v-if="answering" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
         Próxima questão
-        <ArrowRight class="w-5 h-5 ml-2" :stroke-width="2.5" />
+        <ArrowRight v-if="!answering" class="w-5 h-5 ml-2" :stroke-width="2.5" />
       </button>
     </div>
 

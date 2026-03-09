@@ -301,6 +301,8 @@ export const useSessionStore = defineStore('session', () => {
   // Record a question being done (no correct/wrong — that happens in review)
   async function recordAnswer() {
     if (!currentCycle.value || !currentCycle.value.id) return
+    // Guard: prevent incrementing past the target (race condition on rapid clicks)
+    if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) return
 
     currentCycle.value.questionsDone++
     totalQuestions.value++
@@ -427,7 +429,7 @@ export const useSessionStore = defineStore('session', () => {
       ? (currentDisciplineIndex.value + 1) % disciplines.value.length
       : currentDisciplineIndex.value + 1
 
-    startNewCycle()
+    await startNewCycle()
   }
 
   // End the session
