@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { withTimeout, DEFAULT_TIMEOUT_MS } from '@/utils/timeout'
 import { useAuthStore } from './auth'
 import type { EnergyLevel } from '@/types/database'
 
@@ -236,11 +237,11 @@ export const useSessionStore = defineStore('session', () => {
   async function startSession(config: { disciplines: string[]; questionsPerBlock: number }) {
     if (!auth.user) throw new Error('Faça login antes de iniciar uma sessão')
 
-    const { data, error } = await supabase
-      .from('study_sessions')
-      .insert({ user_id: auth.user.id })
-      .select()
-      .limit(1)
+    const { data, error } = await withTimeout(
+      supabase.from('study_sessions').insert({ user_id: auth.user.id }).select().limit(1),
+      DEFAULT_TIMEOUT_MS,
+      'Session creation timed out',
+    )
 
     if (error) throw error
     if (!data || data.length === 0) throw new Error('Falha ao criar sessão')
@@ -267,17 +268,21 @@ export const useSessionStore = defineStore('session', () => {
       ? getAdjustedQuestions(lastEnergy.value, questionsPerBlock.value)
       : questionsPerBlock.value
 
-    const { data, error } = await supabase
-      .from('cycles')
-      .insert({
-        session_id: sessionId.value,
-        cycle_number: cycleNum,
-        discipline,
-        questions_target: target,
-        energy_before: lastEnergy.value,
-      })
-      .select()
-      .limit(1)
+    const { data, error } = await withTimeout(
+      supabase
+        .from('cycles')
+        .insert({
+          session_id: sessionId.value,
+          cycle_number: cycleNum,
+          discipline,
+          questions_target: target,
+          energy_before: lastEnergy.value,
+        })
+        .select()
+        .limit(1),
+      DEFAULT_TIMEOUT_MS,
+      'Cycle creation timed out',
+    )
 
     if (error) throw error
     if (!data || data.length === 0) throw new Error('Falha ao criar ciclo')
@@ -312,10 +317,14 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       // Update in database
-      await supabase
-        .from('cycles')
-        .update({ questions_done: currentCycle.value.questionsDone })
-        .eq('id', currentCycle.value.id)
+      await withTimeout(
+        supabase
+          .from('cycles')
+          .update({ questions_done: currentCycle.value.questionsDone })
+          .eq('id', currentCycle.value.id),
+        DEFAULT_TIMEOUT_MS,
+        'Cycle progress update timed out',
+      )
 
       // Cycle complete → always go to review
       if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
@@ -356,10 +365,14 @@ export const useSessionStore = defineStore('session', () => {
     try {
       // Persist to DB
       if (currentCycle.value.id) {
-        await supabase
-          .from('cycles')
-          .update({ questions_correct: correctCount, error_reviews: errorReviews })
-          .eq('id', currentCycle.value.id)
+        await withTimeout(
+          supabase
+            .from('cycles')
+            .update({ questions_correct: correctCount, error_reviews: errorReviews })
+            .eq('id', currentCycle.value.id),
+          DEFAULT_TIMEOUT_MS,
+          'Cycle review update timed out',
+        )
       }
 
       phase.value = 'checkin'
@@ -379,23 +392,31 @@ export const useSessionStore = defineStore('session', () => {
     const previousCycles = totalCycles.value
 
     // Save check-in
-    await supabase.from('energy_checkins').insert({
-      user_id: auth.user.id,
-      session_id: sessionId.value,
-      cycle_id: currentCycle.value.id,
-      energy_level: energy,
-      note: note || null,
-    })
+    await withTimeout(
+      supabase.from('energy_checkins').insert({
+        user_id: auth.user.id,
+        session_id: sessionId.value,
+        cycle_id: currentCycle.value.id,
+        energy_level: energy,
+        note: note || null,
+      }),
+      DEFAULT_TIMEOUT_MS,
+      'Energy check-in insert timed out',
+    )
 
     // Update cycle with energy_after
     if (currentCycle.value.id) {
-      await supabase
-        .from('cycles')
-        .update({
-          energy_after: energy,
-          ended_at: new Date().toISOString(),
-        })
-        .eq('id', currentCycle.value.id)
+      await withTimeout(
+        supabase
+          .from('cycles')
+          .update({
+            energy_after: energy,
+            ended_at: new Date().toISOString(),
+          })
+          .eq('id', currentCycle.value.id),
+        DEFAULT_TIMEOUT_MS,
+        'Cycle energy update timed out',
+      )
     }
 
     lastEnergy.value = energy
@@ -403,14 +424,18 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       // Update session totals
-      await supabase
-        .from('study_sessions')
-        .update({
-          total_questions: totalQuestions.value,
-          total_correct: totalCorrect.value,
-          total_cycles: totalCycles.value,
-        })
-        .eq('id', sessionId.value)
+      await withTimeout(
+        supabase
+          .from('study_sessions')
+          .update({
+            total_questions: totalQuestions.value,
+            total_correct: totalCorrect.value,
+            total_cycles: totalCycles.value,
+          })
+          .eq('id', sessionId.value),
+        DEFAULT_TIMEOUT_MS,
+        'Session totals update timed out',
+      )
 
       // If red energy and cycle had ≤2 questions, there's nowhere left to reduce — end the session
       if (energy === 'red' && (currentCycle.value?.questionsTarget ?? 0) <= 2) {
@@ -486,32 +511,48 @@ export const useSessionStore = defineStore('session', () => {
       if (totalQuestions.value === 0) {
         // Delete orphan cycle(s) and the empty session
         if (currentCycle.value?.id) {
-          await supabase.from('cycles').delete().eq('id', currentCycle.value.id)
+          await withTimeout(
+            supabase.from('cycles').delete().eq('id', currentCycle.value.id),
+            DEFAULT_TIMEOUT_MS,
+            'Cycle cleanup delete timed out',
+          )
         }
-        await supabase.from('study_sessions').delete().eq('id', sessionId.value)
+        await withTimeout(
+          supabase.from('study_sessions').delete().eq('id', sessionId.value),
+          DEFAULT_TIMEOUT_MS,
+          'Session cleanup delete timed out',
+        )
         reset()
         return
       }
 
       // Close current cycle if open
       if (currentCycle.value?.id) {
-        await supabase
-          .from('cycles')
-          .update({ ended_at: new Date().toISOString() })
-          .eq('id', currentCycle.value.id)
+        await withTimeout(
+          supabase
+            .from('cycles')
+            .update({ ended_at: new Date().toISOString() })
+            .eq('id', currentCycle.value.id),
+          DEFAULT_TIMEOUT_MS,
+          'Cycle close update timed out',
+        )
       }
 
       // Update session
-      await supabase
-        .from('study_sessions')
-        .update({
-          ended_at: new Date().toISOString(),
-          total_questions: totalQuestions.value,
-          total_correct: totalCorrect.value,
-          total_cycles: totalCycles.value,
-          final_energy: lastEnergy.value,
-        })
-        .eq('id', sessionId.value)
+      await withTimeout(
+        supabase
+          .from('study_sessions')
+          .update({
+            ended_at: new Date().toISOString(),
+            total_questions: totalQuestions.value,
+            total_correct: totalCorrect.value,
+            total_cycles: totalCycles.value,
+            final_energy: lastEnergy.value,
+          })
+          .eq('id', sessionId.value),
+        DEFAULT_TIMEOUT_MS,
+        'Session finalization update timed out',
+      )
 
       phase.value = 'finished'
     } finally {

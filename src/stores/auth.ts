@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
-import type { User, Session } from '@supabase/supabase-js'
+import { withTimeout, DEFAULT_TIMEOUT_MS } from '@/utils/timeout'
+import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -17,6 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
   } | null>(null)
 
   let initPromise: Promise<void> | null = null
+  let authListenerCleanup: (() => void) | null = null
 
   const isAuthenticated = computed(() => !!user.value)
   const displayName = computed(
@@ -26,13 +28,27 @@ export const useAuthStore = defineStore('auth', () => {
     () => profile.value?.avatar_url || user.value?.user_metadata?.avatar_url || null,
   )
 
+  function clearAuthState() {
+    session.value = null
+    user.value = null
+    profile.value = null
+  }
+
+  function handleAuthStateChange(event: AuthChangeEvent, newSession: Session | null) {
+    if (event === 'SIGNED_OUT') {
+      clearAuthState()
+      return
+    }
+
+    session.value = newSession
+    user.value = newSession?.user ?? null
+  }
+
   function initialize() {
     if (initPromise) return initPromise
     initPromise = doInitialize().catch((error) => {
       console.error('[auth] initialize failed:', error)
-      session.value = null
-      user.value = null
-      profile.value = null
+      clearAuthState()
     })
     return initPromise
   }
@@ -45,7 +61,11 @@ export const useAuthStore = defineStore('auth', () => {
   async function doInitialize() {
     loading.value = true
     try {
-      const { data } = await supabase.auth.getSession()
+      const { data } = await withTimeout(
+        supabase.auth.getSession(),
+        DEFAULT_TIMEOUT_MS,
+        'Auth session check timed out',
+      )
       session.value = data.session
       user.value = data.session?.user ?? null
 
@@ -54,20 +74,24 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // Listen for auth changes (token refresh, sign-in/out from other tabs, etc.)
-      supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      authListenerCleanup?.()
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, newSession) => {
         try {
-          session.value = newSession
-          user.value = newSession?.user ?? null
+          handleAuthStateChange(event, newSession)
 
           if (user.value) {
             await fetchProfile()
           } else {
             profile.value = null
+            initPromise = null
           }
         } catch (error) {
           console.error('[auth] state change handling failed:', error)
         }
       })
+      authListenerCleanup = () => subscription.unsubscribe()
     } finally {
       loading.value = false
     }
@@ -77,27 +101,31 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.value.id)
-        .limit(1)
+      const { data, error } = await withTimeout(
+        supabase.from('profiles').select('*').eq('id', user.value.id).limit(1),
+        DEFAULT_TIMEOUT_MS,
+        'Profile fetch timed out',
+      )
 
       if (!error && data && data.length > 0) {
         profile.value = data[0] as typeof profile.value
       } else if (!error && (!data || data.length === 0)) {
         // Profile doesn't exist yet — create it (trigger may have missed)
         const meta = user.value.user_metadata ?? {}
-        const { data: created, error: insertErr } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.value.id,
-            email: user.value.email ?? '',
-            display_name: meta.full_name ?? meta.name ?? user.value.email?.split('@')[0] ?? null,
-            avatar_url: meta.avatar_url ?? meta.picture ?? null,
-          })
-          .select()
-          .limit(1)
+        const { data: created, error: insertErr } = await withTimeout(
+          supabase
+            .from('profiles')
+            .insert({
+              id: user.value.id,
+              email: user.value.email ?? '',
+              display_name: meta.full_name ?? meta.name ?? user.value.email?.split('@')[0] ?? null,
+              avatar_url: meta.avatar_url ?? meta.picture ?? null,
+            })
+            .select()
+            .limit(1),
+          DEFAULT_TIMEOUT_MS,
+          'Profile creation timed out',
+        )
 
         if (!insertErr && created && created.length > 0) {
           profile.value = created[0] as typeof profile.value
@@ -109,21 +137,27 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    })
+    const { error } = await withTimeout(
+      supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      }),
+      DEFAULT_TIMEOUT_MS,
+      'Google sign-in request timed out',
+    )
     if (error) throw error
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
+    const { error } = await withTimeout(
+      supabase.auth.signOut({ scope: 'local' }),
+      DEFAULT_TIMEOUT_MS,
+      'Sign-out request timed out',
+    )
     if (error) throw error
-    user.value = null
-    session.value = null
-    profile.value = null
+    clearAuthState()
     // Reset cached init promise so the next login starts fresh
     initPromise = null
   }
@@ -135,12 +169,11 @@ export const useAuthStore = defineStore('auth', () => {
   }) {
     if (!user.value) throw new Error('Usuário não autenticado')
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.value.id)
-      .select()
-      .limit(1)
+    const { data, error } = await withTimeout(
+      supabase.from('profiles').update(updates).eq('id', user.value.id).select().limit(1),
+      DEFAULT_TIMEOUT_MS,
+      'Profile update timed out',
+    )
 
     if (error) throw error
     if (!data || data.length === 0) {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as Sentry from '@sentry/vue'
 import { supabase } from '@/lib/supabase'
+import { withTimeout, DEFAULT_TIMEOUT_MS } from '@/utils/timeout'
 import { useAuthStore } from './auth'
 import type { EnergyLevel, ErrorReviewRecord, ErrorReason } from '@/types/database'
 
@@ -285,12 +286,16 @@ export const useHistoryStore = defineStore('history', () => {
     loading.value = true
     error.value = null
     try {
-      const sessionsResult = await supabase
-        .from('study_sessions')
-        .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy')
-        .eq('user_id', auth.user.id)
-        .order('started_at', { ascending: false })
-        .limit(100)
+      const sessionsResult = await withTimeout(
+        supabase
+          .from('study_sessions')
+          .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy')
+          .eq('user_id', auth.user.id)
+          .order('started_at', { ascending: false })
+          .limit(100),
+        DEFAULT_TIMEOUT_MS,
+        'History sessions fetch timed out',
+      )
 
       if (sessionsResult.error) throw sessionsResult.error
       sessions.value = (sessionsResult.data ?? []) as SessionSummary[]
@@ -301,14 +306,18 @@ export const useHistoryStore = defineStore('history', () => {
         return
       }
 
-      const cyclesResult = await supabase
-        .from('cycles')
-        .select(
-          'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
-        )
-        .in('session_id', sessionIds)
-        .order('started_at', { ascending: false })
-        .limit(500)
+      const cyclesResult = await withTimeout(
+        supabase
+          .from('cycles')
+          .select(
+            'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
+          )
+          .in('session_id', sessionIds)
+          .order('started_at', { ascending: false })
+          .limit(500),
+        DEFAULT_TIMEOUT_MS,
+        'History cycles fetch timed out',
+      )
 
       if (cyclesResult.error) throw cyclesResult.error
       cycles.value = (cyclesResult.data ?? []) as CycleSummary[]

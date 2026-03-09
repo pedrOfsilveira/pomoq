@@ -57,6 +57,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
         runtimeCaching: [
           {
+            // Supabase API/Auth traffic must always hit the network to avoid stale sessions.
+            urlPattern: /^https:\/\/([\w-]+\.)?supabase\.co\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
