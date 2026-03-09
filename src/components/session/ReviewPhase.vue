@@ -89,7 +89,7 @@ async function submit() {
       <ClipboardList class="w-7 h-7 mx-auto mb-2 text-white/80" :stroke-width="1.5" />
       <h2 class="text-2xl font-bold text-white mb-1">Correção</h2>
       <p class="text-white/70 text-sm">
-        {{ total }} questão{{ total !== 1 ? 's' : '' }} de
+        {{ total !== 1 ? `${total} questões` : '1 questão' }} de
         <strong class="text-white">{{ session.currentDiscipline }}</strong>
       </p>
     </div>
@@ -185,7 +185,7 @@ async function submit() {
       {{ submitError }}
     </p>
     <p v-if="!canSubmit" class="text-white/50 text-xs mt-2">
-      {{ pendingCount }} quest{{ pendingCount !== 1 ? 'ões pendentes' : 'ão pendente' }}
+      {{ pendingCount !== 1 ? `${pendingCount} questões pendentes` : '1 questão pendente' }}
     </p>
   </div>
 </template>
