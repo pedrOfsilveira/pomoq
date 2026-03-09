@@ -7,16 +7,31 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const { triggerInstall } = usePwaInstall()
-
+const { triggerInstall, deferredPrompt } = usePwaInstall()
 const installing = ref(false)
 
 async function handleInstall() {
   if (installing.value) return
   installing.value = true
+  
   try {
-    await triggerInstall()
+    // Verifica se o evento nativo já está pronto (o PWA pode ser instalado)
+    if (deferredPrompt.value) {
+      // O triggerInstall já retorna um booleano dizendo se o usuário aceitou ou não
+      const accepted = await triggerInstall()
+      
+      if (accepted) {
+        console.log("PWA Instalado com sucesso!")
+      } else {
+        console.log("Usuário cancelou a instalação do PWA.")
+      }
+    } else {
+      console.warn("O prompt de instalação não está disponível no momento.")
+    }
+  } catch (error) {
+    console.error("Erro ao tentar instalar o PWA:", error)
   } finally {
+    // Só fecha o seu modal customizado DEPOIS que o usuário interagir com o balão do Chrome
     installing.value = false
     emit('close')
   }
@@ -27,7 +42,6 @@ function handleDismiss() {
   emit('close')
 }
 </script>
-
 <template>
   <Transition name="pwa-prompt">
     <div
