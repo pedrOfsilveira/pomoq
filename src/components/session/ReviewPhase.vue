@@ -178,7 +178,13 @@ async function submit() {
     </div>
 
     <!-- Submit -->
-    <AppButton class="w-full" size="lg" :disabled="!canSubmit || submitting" :loading="submitting" @click="submit">
+    <AppButton
+      class="w-full"
+      size="lg"
+      :disabled="!canSubmit || submitting"
+      :loading="submitting"
+      @click="submit"
+    >
       Continuar
     </AppButton>
     <p v-if="submitError" class="text-red-200 text-xs mt-2">

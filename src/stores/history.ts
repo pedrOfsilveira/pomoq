@@ -277,7 +277,9 @@ export const useHistoryStore = defineStore('history', () => {
       const sessionsResult = await withTimeout(
         supabase
           .from('study_sessions')
-          .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy')
+          .select(
+            'id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy',
+          )
           .eq('user_id', auth.user.id)
           .order('started_at', { ascending: false })
           .limit(100),

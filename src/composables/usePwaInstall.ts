@@ -5,7 +5,6 @@ const deferredPrompt = ref<Event | null>(null)
 const canInstall = ref(false)
 const isInstalled = ref(false)
 
-
 if (typeof window !== 'undefined') {
   if (window.matchMedia('(display-mode: standalone)').matches) {
     isInstalled.value = true

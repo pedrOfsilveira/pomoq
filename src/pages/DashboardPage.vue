@@ -9,10 +9,13 @@ import EnergyTrendChart from '@/components/charts/EnergyTrendChart.vue'
 import DailyVolumeChart from '@/components/charts/DailyVolumeChart.vue'
 import { ChevronLeft, BarChart3, ChevronDown } from 'lucide-vue-next'
 
-const REASON_META: Record<'attention' | 'content_gap' | 'interpretation', { label: string; barClass: string }> = {
-  attention:       { label: 'Falta de atenção',    barClass: 'bg-energy-yellow' },
-  content_gap:     { label: 'Lacuna no conteúdo',  barClass: 'bg-energy-red'    },
-  interpretation:  { label: 'Interpretação',        barClass: 'bg-white/60'      },
+const REASON_META: Record<
+  'attention' | 'content_gap' | 'interpretation',
+  { label: string; barClass: string }
+> = {
+  attention: { label: 'Falta de atenção', barClass: 'bg-energy-yellow' },
+  content_gap: { label: 'Lacuna no conteúdo', barClass: 'bg-energy-red' },
+  interpretation: { label: 'Interpretação', barClass: 'bg-white/60' },
 }
 
 const history = useHistoryStore()
@@ -222,7 +225,9 @@ const worstColor = computed(() => {
 
         <!-- Discipline accuracy table (expandable with error reasons) -->
         <div v-if="history.disciplineStats.length > 0" class="bg-white/10 rounded-2xl p-5">
-          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">Precisão por Disciplina</h2>
+          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">
+            Precisão por Disciplina
+          </h2>
           <div class="space-y-2">
             <div
               v-for="d in history.disciplineStats"
@@ -280,22 +285,33 @@ const worstColor = computed(() => {
               <!-- Expandable error detail -->
               <Transition name="expand">
                 <div
-                  v-if="expandedDisciplines.has(d.discipline) && errorReasonByDiscipline.get(d.discipline)"
+                  v-if="
+                    expandedDisciplines.has(d.discipline) &&
+                    errorReasonByDiscipline.get(d.discipline)
+                  "
                   class="px-3 pb-3 border-t border-white/10"
                 >
                   <div class="pt-3 space-y-2">
                     <div class="flex items-center justify-between mb-1">
-                      <span class="text-white/50 text-[10px] uppercase tracking-wider">Padrão de erros</span>
-                      <span class="text-white/40 text-xs">{{ errorReasonByDiscipline.get(d.discipline)!.total }} erro{{ errorReasonByDiscipline.get(d.discipline)!.total !== 1 ? 's' : '' }}</span>
+                      <span class="text-white/50 text-[10px] uppercase tracking-wider"
+                        >Padrão de erros</span
+                      >
+                      <span class="text-white/40 text-xs"
+                        >{{ errorReasonByDiscipline.get(d.discipline)!.total }} erro{{
+                          errorReasonByDiscipline.get(d.discipline)!.total !== 1 ? 's' : ''
+                        }}</span
+                      >
                     </div>
 
                     <!-- Reason rows -->
                     <div
-                      v-for="key in (['attention', 'content_gap', 'interpretation'] as const)"
+                      v-for="key in ['attention', 'content_gap', 'interpretation'] as const"
                       :key="key"
                       class="flex items-center gap-2"
                     >
-                      <span class="text-white/60 text-xs w-36 shrink-0">{{ REASON_META[key].label }}</span>
+                      <span class="text-white/60 text-xs w-36 shrink-0">{{
+                        REASON_META[key].label
+                      }}</span>
                       <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                         <div
                           class="h-full rounded-full"
@@ -322,7 +338,9 @@ const worstColor = computed(() => {
                       v-if="errorReasonByDiscipline.get(d.discipline)!.contentNotes.length > 0"
                       class="pt-2 mt-1 border-t border-white/10"
                     >
-                      <p class="text-white/40 text-[10px] uppercase tracking-wider mb-1.5">Conteúdos a revisar</p>
+                      <p class="text-white/40 text-[10px] uppercase tracking-wider mb-1.5">
+                        Conteúdos a revisar
+                      </p>
                       <div class="flex flex-wrap gap-1.5">
                         <span
                           v-for="note in errorReasonByDiscipline.get(d.discipline)!.contentNotes"

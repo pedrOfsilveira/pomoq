@@ -19,7 +19,7 @@ async function handleInstall() {
   if (!deferredPrompt.value) {
     console.warn(
       '[PWA] deferredPrompt is null — Chrome did not fire beforeinstallprompt.\n' +
-      'Checklist: HTTPS (or localhost), valid manifest with PNG icons (192 + 512), active Service Worker.'
+        'Checklist: HTTPS (or localhost), valid manifest with PNG icons (192 + 512), active Service Worker.',
     )
     emit('close')
     return
@@ -50,7 +50,10 @@ function handleDismiss() {
       class="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4"
     >
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="!installing && handleDismiss()" />
+      <div
+        class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        @click="!installing && handleDismiss()"
+      />
 
       <!-- Card -->
       <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">

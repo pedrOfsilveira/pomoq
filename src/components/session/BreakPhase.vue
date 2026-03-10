@@ -14,8 +14,7 @@ const actionError = ref('')
 
 const isSessionEnding = computed(
   () =>
-    session.currentDisciplineIndex >= session.disciplines.length - 1 &&
-    !session.loopDisciplines,
+    session.currentDisciplineIndex >= session.disciplines.length - 1 && !session.loopDisciplines,
 )
 
 function formatTime(seconds: number): string {

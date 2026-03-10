@@ -139,7 +139,8 @@ async function save() {
           <div>
             <p class="text-white text-sm font-medium">Ciclo contínuo de disciplinas</p>
             <p class="text-white/60 text-xs mt-0.5">
-              Quando ativado, a sessão reinicia do início após a última disciplina em vez de encerrar.
+              Quando ativado, a sessão reinicia do início após a última disciplina em vez de
+              encerrar.
             </p>
           </div>
           <button
