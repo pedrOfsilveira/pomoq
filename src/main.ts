@@ -1,3 +1,12 @@
+// Handle Vite chunk preload errors caused by stale cached index.html after deployments
+window.addEventListener('vite:preloadError', () => {
+  const reloadKey = 'vite-preload-reload'
+  if (!sessionStorage.getItem(reloadKey)) {
+    sessionStorage.setItem(reloadKey, '1')
+    window.location.reload()
+  }
+})
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import * as Sentry from '@sentry/vue'

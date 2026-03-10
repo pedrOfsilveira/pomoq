@@ -41,6 +41,20 @@ const router = createRouter({
   ],
 })
 
+router.onError((error, to) => {
+  const isChunkLoadError =
+    error?.message?.includes('Failed to fetch dynamically imported module') ||
+    error?.message?.includes('Unable to preload CSS')
+
+  if (isChunkLoadError) {
+    const reloadKey = 'chunk-load-reload'
+    if (!sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, '1')
+      window.location.href = to.fullPath
+    }
+  }
+})
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
@@ -59,6 +73,10 @@ router.beforeEach(async (to) => {
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'home' }
   }
+})
+
+router.afterEach(() => {
+  sessionStorage.removeItem('chunk-load-reload')
 })
 
 export default router
