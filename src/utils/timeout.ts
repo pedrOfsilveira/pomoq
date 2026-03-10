@@ -1,7 +1,10 @@
 const DEFAULT_TIMEOUT_MS = 10000
 
 export class TimeoutError extends Error {
-  constructor(message: string, public readonly timeoutMs: number) {
+  constructor(
+    message: string,
+    public readonly timeoutMs: number,
+  ) {
     super(message)
     this.name = 'TimeoutError'
   }
@@ -19,12 +22,7 @@ export function withTimeout<T>(
 
   return new Promise<T>((resolve, reject) => {
     timeoutId = setTimeout(() => {
-      reject(
-        new TimeoutError(
-          message ?? `Operation timed out after ${timeoutMs}ms`,
-          timeoutMs,
-        ),
-      )
+      reject(new TimeoutError(message ?? `Operation timed out after ${timeoutMs}ms`, timeoutMs))
     }, timeoutMs)
 
     Promise.resolve(promise)

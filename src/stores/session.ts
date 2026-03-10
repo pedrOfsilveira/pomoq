@@ -195,19 +195,27 @@ export const useSessionStore = defineStore('session', () => {
 
   function getAdjustedQuestions(energy: EnergyLevel, baseQuestions: number): number {
     switch (energy) {
-      case 'green':  return Math.min(baseQuestions + 2, 10)
-      case 'yellow': return baseQuestions
-      case 'red':    return Math.max(baseQuestions - 2, 2)
-      default:       return baseQuestions
+      case 'green':
+        return Math.min(baseQuestions + 2, 10)
+      case 'yellow':
+        return baseQuestions
+      case 'red':
+        return Math.max(baseQuestions - 2, 2)
+      default:
+        return baseQuestions
     }
   }
 
   function getBreakDuration(energy: EnergyLevel): number {
     switch (energy) {
-      case 'green':  return 3 * 60
-      case 'yellow': return 5 * 60
-      case 'red':    return 10 * 60
-      default:       return 5 * 60
+      case 'green':
+        return 3 * 60
+      case 'yellow':
+        return 5 * 60
+      case 'red':
+        return 10 * 60
+      default:
+        return 5 * 60
     }
   }
 

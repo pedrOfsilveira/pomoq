@@ -29,7 +29,11 @@ function startNew() {
   <div class="text-center">
     <!-- Header -->
     <div class="mb-6">
-      <BedDouble v-if="session.forcedRest" class="w-8 h-8 mx-auto mb-3 text-energy-red/80" :stroke-width="1.5" />
+      <BedDouble
+        v-if="session.forcedRest"
+        class="w-8 h-8 mx-auto mb-3 text-energy-red/80"
+        :stroke-width="1.5"
+      />
       <Trophy v-else class="w-8 h-8 mx-auto mb-3 text-white/80" :stroke-width="1.5" />
       <h2 class="text-2xl font-bold text-white mb-2">
         {{ session.forcedRest ? 'Hora de Descansar' : 'Sessão Completa' }}

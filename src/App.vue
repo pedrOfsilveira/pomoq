@@ -5,12 +5,12 @@ import { useAuthStore } from '@/stores/auth'
 import HeaderBar from '@/components/layout/HeaderBar.vue'
 import InstallPrompt from '@/components/ui/InstallPrompt.vue'
 import { usePwaInstall } from '@/composables/usePwaInstall'
-
-
+import { Analytics } from '@vercel/analytics/vue'
 
 const session = useSessionStore()
 const auth = useAuthStore()
-const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted, canInstall } = usePwaInstall()
+const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted, canInstall } =
+  usePwaInstall()
 
 const showInstallPrompt = ref(false)
 
@@ -87,6 +87,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <Analytics />
   <div
     class="min-h-screen transition-bg flex flex-col safe-area-top safe-area-bottom"
     :class="auth.isAuthenticated ? bgColor : 'bg-pomo-red'"
