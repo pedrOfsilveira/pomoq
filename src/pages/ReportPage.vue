@@ -11,9 +11,7 @@ const auth = useAuthStore()
 
 onMounted(() => {
   if (auth.isAuthenticated) {
-    history.fetchSessions().catch(() => {
-      // Error is stored in history.error for UI display.
-    })
+    history.fetchSessions().catch(() => {})
   }
 })
 
@@ -21,9 +19,7 @@ watch(
   () => auth.isAuthenticated,
   (ready) => {
     if (ready && history.sessions.length === 0) {
-      history.fetchSessions().catch(() => {
-        // Error is stored in history.error for UI display.
-      })
+      history.fetchSessions().catch(() => {})
     }
   },
 )

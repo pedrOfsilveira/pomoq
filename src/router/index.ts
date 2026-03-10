@@ -35,18 +35,15 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      // Catch-all redirect
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
   ],
 })
 
-// Auth guard
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
-  // Always wait for auth to finish initialising (idempotent)
   try {
     await auth.waitForAuth()
   } catch (error) {

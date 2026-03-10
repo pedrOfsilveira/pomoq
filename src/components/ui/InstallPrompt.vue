@@ -28,8 +28,6 @@ async function handleInstall() {
   installing.value = true
 
   try {
-    // prompt() shows the native Chrome install banner.
-    // We await userChoice so the modal only closes AFTER the user decides.
     const accepted = await triggerInstall()
     console.log('[PWA] Install outcome:', accepted ? '✓ accepted' : '✗ dismissed')
   } catch (error) {

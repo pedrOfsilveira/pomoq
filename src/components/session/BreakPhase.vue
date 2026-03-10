@@ -12,14 +12,12 @@ const canSkip = ref(false)
 const processing = ref(false)
 const actionError = ref('')
 
-// True when clicking "continue" will end the session (last discipline, no loop)
 const isSessionEnding = computed(
   () =>
     session.currentDisciplineIndex >= session.disciplines.length - 1 &&
     !session.loopDisciplines,
 )
 
-// Format seconds as MM:SS
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -35,7 +33,6 @@ const breakComplete = computed(() => session.breakSeconds >= session.breakTarget
 
 const isRedEnergy = computed(() => session.lastEnergy === 'red')
 
-// Practical break tips
 const messages = [
   'Levante, tome água e alongue-se.',
   'Afaste o olhar da tela por alguns segundos.',
@@ -45,7 +42,6 @@ const messages = [
 ]
 const randomMessage = messages[Math.floor(Math.random() * messages.length)]
 
-// Allow skip after 30 seconds minimum
 let skipTimer: ReturnType<typeof setTimeout>
 
 onMounted(() => {

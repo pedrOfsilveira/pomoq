@@ -96,13 +96,11 @@ export const useHistoryStore = defineStore('history', () => {
     sessions.value.reduce((sum, s) => sum + s.total_cycles, 0),
   )
 
-  // Average questions per session
   const avgQuestionsPerSession = computed(() => {
     if (sessions.value.length === 0) return 0
     return Math.round(totalQuestionsAnswered.value / sessions.value.length)
   })
 
-  // Study streak (consecutive days)
   const studyStreak = computed(() => {
     if (sessions.value.length === 0) return 0
     const dates = new Set(sessions.value.map((s) => s.started_at.split('T')[0]!))
@@ -110,14 +108,12 @@ export const useHistoryStore = defineStore('history', () => {
 
     const today = new Date().toISOString().split('T')[0]!
     if (!sortedDates.includes(today)) {
-      // Check if yesterday is in the list
       const yesterday = new Date(Date.now() - 86400_000).toISOString().split('T')[0]!
       if (!sortedDates.includes(yesterday)) return 0
     }
 
     let streak = 0
     let checkDate = new Date()
-    // Start from today and go backwards
     for (let i = 0; i < 365; i++) {
       const dateStr = checkDate.toISOString().split('T')[0]!
       if (dates.has(dateStr)) {
@@ -130,7 +126,6 @@ export const useHistoryStore = defineStore('history', () => {
     return streak
   })
 
-  // Daily stats
   const dailyStats = computed<DailyStats[]>(() => {
     const map = new Map<string, DailyStats>()
     for (const s of sessions.value) {
@@ -152,7 +147,6 @@ export const useHistoryStore = defineStore('history', () => {
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date))
   })
 
-  // Discipline breakdown
   const disciplineStats = computed<DisciplineStats[]>(() => {
     const map = new Map<string, DisciplineStats>()
     for (const c of cycles.value) {
@@ -179,7 +173,6 @@ export const useHistoryStore = defineStore('history', () => {
     return Array.from(map.values()).sort((a, b) => b.totalQuestions - a.totalQuestions)
   })
 
-  // Energy trend over time (grouped by date)
   const energyTrend = computed<EnergyTrend[]>(() => {
     const map = new Map<string, EnergyTrend>()
     for (const c of cycles.value) {
@@ -193,7 +186,6 @@ export const useHistoryStore = defineStore('history', () => {
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date))
   })
 
-  // Weekly volume (last 8 weeks)
   const weeklyVolume = computed<WeeklyVolume[]>(() => {
     const weeks: WeeklyVolume[] = []
     const now = new Date()
@@ -220,7 +212,6 @@ export const useHistoryStore = defineStore('history', () => {
     return weeks
   })
 
-  // Accuracy trend by day (last 14 days sorted ascending)
   const accuracyTrend = computed(() => {
     return dailyStats.value.slice(-14).map((d) => ({
       date: d.date,
@@ -229,7 +220,6 @@ export const useHistoryStore = defineStore('history', () => {
     }))
   })
 
-  // Error reason breakdown per discipline
   const errorReasonStats = computed<ErrorReasonStat[]>(() => {
     const map = new Map<string, ErrorReasonStat>()
     for (const c of cycles.value) {
@@ -258,7 +248,6 @@ export const useHistoryStore = defineStore('history', () => {
         }
       }
     }
-    // Compute topReason per discipline
     for (const stat of map.values()) {
       const reasons: ErrorReason[] = ['attention', 'content_gap', 'interpretation']
       stat.topReason = reasons.reduce((a, b) => (stat[a] >= stat[b] ? a : b))
@@ -266,7 +255,6 @@ export const useHistoryStore = defineStore('history', () => {
     return Array.from(map.values()).sort((a, b) => b.total - a.total)
   })
 
-  // Best and worst disciplines
   const bestDiscipline = computed(() => {
     if (disciplineStats.value.length === 0) return null
     return disciplineStats.value.reduce((best, d) =>

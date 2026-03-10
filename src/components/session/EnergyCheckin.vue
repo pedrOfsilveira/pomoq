@@ -51,18 +51,15 @@ const isLastDiscipline = computed(
   () => session.currentDisciplineIndex >= session.disciplines.length - 1,
 )
 
-// Show what will happen next
 const nextInfo = computed(() => {
   if (!selectedEnergy.value) return ''
 
-  // Warn that the session will end if red energy + current cycle is already at the minimum
   if (selectedEnergy.value === 'red' && (session.currentCycle?.questionsTarget ?? 0) <= 2) {
     return 'Sessão encerrada — hora de descansar.'
   }
 
   const breakDuration = session.getBreakDuration(selectedEnergy.value) / 60
 
-  // Last discipline + no loop: session ends after the break
   if (isLastDiscipline.value && !session.loopDisciplines) {
     return `Pausa: ${breakDuration} min • Sessão encerrada após o intervalo`
   }
@@ -75,7 +72,6 @@ const nextInfo = computed(() => {
   if (diff > 0) qText += ` (+${diff})`
   else if (diff < 0) qText += ` (${diff})`
 
-  // Last discipline + loop: show next discipline is the first one
   if (isLastDiscipline.value && session.loopDisciplines) {
     const nextDiscipline = session.disciplines[0]
     return `Próximo bloco: ${qText} em ${nextDiscipline} • Pausa: ${breakDuration} min`

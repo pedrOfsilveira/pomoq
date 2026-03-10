@@ -5,11 +5,7 @@ const deferredPrompt = ref<Event | null>(null)
 const canInstall = ref(false)
 const isInstalled = ref(false)
 
-// ─── CRITICAL: register the listener at module load time ───────────────────────
-// `beforeinstallprompt` fires very early in the page lifecycle — often before
-// DOMContentLoaded and always before any Vue component's onMounted runs.
-// Registering inside onMounted means the event is ALWAYS missed.
-// ───────────────────────────────────────────────────────────────────────────────
+
 if (typeof window !== 'undefined') {
   if (window.matchMedia('(display-mode: standalone)').matches) {
     isInstalled.value = true
@@ -36,7 +32,6 @@ export function usePwaInstall() {
   const hasBeenPrompted = () => localStorage.getItem(STORAGE_KEY) === 'true'
   const markAsPrompted = () => localStorage.setItem(STORAGE_KEY, 'true')
 
-  // Kept for API compatibility — real listeners are registered at module level.
   function setupListeners() {}
   function teardownListeners() {}
 

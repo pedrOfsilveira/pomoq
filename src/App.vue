@@ -10,10 +10,8 @@ const session = useSessionStore()
 const auth = useAuthStore()
 const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted, canInstall } = usePwaInstall()
 
-// Install prompt visibility
 const showInstallPrompt = ref(false)
 
-// Dynamic background color based on session phase (Pomofocus-style)
 const bgColor = computed(() => {
   switch (session.phase) {
     case 'studying':
@@ -31,8 +29,6 @@ const bgColor = computed(() => {
   }
 })
 
-// Map phase → hex color used to paint html/body so overscroll areas
-// (PWA bounce/pull-to-refresh) show the correct phase color instead of red.
 const phaseBodyColor: Record<string, string> = {
   studying: '#8B3F3F',
   review: '#3B4E80',
@@ -56,7 +52,6 @@ watch(
   { immediate: true },
 )
 
-// Show install prompt once right after the user first logs in
 watch(
   () => auth.isAuthenticated,
   (authenticated, wasAuthenticated) => {
@@ -77,8 +72,6 @@ onMounted(() => {
   setupListeners()
   syncBodyColor(session.phase, auth.isAuthenticated)
 
-  // If user was already authenticated on page load (session restored before mount),
-  // the watcher won't fire — so we check here too.
   if (auth.isAuthenticated && !hasBeenPrompted()) {
     setTimeout(() => {
       showInstallPrompt.value = true

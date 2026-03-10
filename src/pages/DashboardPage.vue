@@ -18,12 +18,9 @@ const REASON_META: Record<'attention' | 'content_gap' | 'interpretation', { labe
 const history = useHistoryStore()
 const auth = useAuthStore()
 
-// Fetch sessions when the component mounts AND whenever auth becomes ready
 onMounted(() => {
   if (auth.isAuthenticated) {
-    history.fetchSessions().catch(() => {
-      // Error is stored in history.error for UI display.
-    })
+    history.fetchSessions().catch(() => {})
   }
 })
 
@@ -31,14 +28,11 @@ watch(
   () => auth.isAuthenticated,
   (ready) => {
     if (ready && history.sessions.length === 0) {
-      history.fetchSessions().catch(() => {
-        // Error is stored in history.error for UI display.
-      })
+      history.fetchSessions().catch(() => {})
     }
   },
 )
 
-// Greeting based on time
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour < 12) return 'Bom dia'
@@ -49,7 +43,6 @@ const greeting = computed(() => {
 const hasData = computed(() => history.sessions.length > 0)
 const hasChartData = computed(() => history.dailyStats.length >= 2)
 
-// Discipline accuracy data for chart
 const disciplineChartData = computed(() =>
   history.disciplineStats.map((d) => ({
     discipline: d.discipline,
@@ -58,7 +51,6 @@ const disciplineChartData = computed(() =>
   })),
 )
 
-// Expanded discipline rows
 const expandedDisciplines = ref<Set<string>>(new Set())
 function toggleDiscipline(name: string) {
   if (expandedDisciplines.value.has(name)) {
@@ -66,11 +58,9 @@ function toggleDiscipline(name: string) {
   } else {
     expandedDisciplines.value.add(name)
   }
-  // trigger reactivity
   expandedDisciplines.value = new Set(expandedDisciplines.value)
 }
 
-// Error reason stats indexed by discipline
 const errorReasonByDiscipline = computed(() => {
   const map = new Map(history.errorReasonStats.map((s) => [s.discipline, s]))
   return map

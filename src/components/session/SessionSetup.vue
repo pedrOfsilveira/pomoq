@@ -7,7 +7,6 @@ import AppButton from '@/components/ui/AppButton.vue'
 const session = useSessionStore()
 const auth = useAuthStore()
 
-// Default disciplines
 const defaultDisciplines = [
   'Matemática',
   'Português',

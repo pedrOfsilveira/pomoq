@@ -73,7 +73,6 @@ export const useAuthStore = defineStore('auth', () => {
         await fetchProfile()
       }
 
-      // Listen for auth changes (token refresh, sign-in/out from other tabs, etc.)
       authListenerCleanup?.()
       const {
         data: { subscription },
@@ -110,7 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (!error && data && data.length > 0) {
         profile.value = data[0] as typeof profile.value
       } else if (!error && (!data || data.length === 0)) {
-        // Profile doesn't exist yet — create it (trigger may have missed)
+        // Profile not found — create it
         const meta = user.value.user_metadata ?? {}
         const { data: created, error: insertErr } = await withTimeout(
           supabase
@@ -158,7 +157,6 @@ export const useAuthStore = defineStore('auth', () => {
     )
     if (error) throw error
     clearAuthState()
-    // Reset cached init promise so the next login starts fresh
     initPromise = null
   }
 

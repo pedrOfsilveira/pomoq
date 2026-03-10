@@ -41,11 +41,20 @@ npm install
 
 ### 2. Configurar variaveis de ambiente
 
-Crie um arquivo `.env` na raiz com:
+Copie o arquivo de exemplo e preencha os valores:
+
+```bash
+cp .env.example .env
+```
 
 ```env
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
+# Supabase
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Sentry (opcional — monitoramento de erros)
+VITE_SENTRY_DSN=https://your-public-key@o0000000000000000.ingest.us.sentry.io/0000000000000000
+VITE_SENTRY_TRACES_SAMPLE_RATE=0.2
 ```
 
 ### 3. Iniciar em desenvolvimento

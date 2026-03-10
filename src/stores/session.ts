@@ -45,7 +45,6 @@ export interface CycleState {
 export const useSessionStore = defineStore('session', () => {
   const auth = useAuthStore()
 
-  // Session state
   const sessionId = ref<string | null>(null)
   const phase = ref<SessionPhase>('idle')
   const disciplines = ref<string[]>([])
@@ -58,7 +57,6 @@ export const useSessionStore = defineStore('session', () => {
   const lastEnergy = ref<EnergyLevel | null>(null)
   const forcedRest = ref(false)
 
-  // ── User preferences (persisted separately, survive reset) ─────────────────
   const loopDisciplines = ref(false)
 
   function savePrefs() {
@@ -82,17 +80,12 @@ export const useSessionStore = defineStore('session', () => {
 
   watch(loopDisciplines, savePrefs)
   loadPrefs()
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // Per-cycle error reviews
   const cycleErrorReviews = ref<ErrorReview[]>([])
 
-  // Break timer
   const breakSeconds = ref(0)
   const breakTarget = ref(300) // 5 min default
   let breakInterval: ReturnType<typeof setInterval> | null = null
-
-  // ── LocalStorage persistence ────────────────────────────────────────────────
 
   function saveToStorage() {
     if (phase.value === 'idle') {
@@ -120,7 +113,7 @@ export const useSessionStore = defineStore('session', () => {
         }),
       )
     } catch {
-      // storage full or unavailable — silently ignore
+      // storage full or unavailable
     }
   }
 
@@ -156,7 +149,6 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  // Persist on every meaningful state change
   watch(
     [
       sessionId,
@@ -178,12 +170,8 @@ export const useSessionStore = defineStore('session', () => {
     { deep: true },
   )
 
-  // Restore on store creation
   loadFromStorage()
 
-  // ───────────────────────────────────────────────────────────────────────────
-
-  // Computed
   const currentDiscipline = computed(() => disciplines.value[currentDisciplineIndex.value] || '')
 
   const progress = computed(() => {
@@ -205,35 +193,24 @@ export const useSessionStore = defineStore('session', () => {
     )
   })
 
-  // Calculate questions for next block based on energy
   function getAdjustedQuestions(energy: EnergyLevel, baseQuestions: number): number {
     switch (energy) {
-      case 'green':
-        return Math.min(baseQuestions + 2, 10) // Feeling good, push a bit
-      case 'yellow':
-        return baseQuestions // Maintain
-      case 'red':
-        return Math.max(baseQuestions - 2, 2) // Reduce load
-      default:
-        return baseQuestions
+      case 'green':  return Math.min(baseQuestions + 2, 10)
+      case 'yellow': return baseQuestions
+      case 'red':    return Math.max(baseQuestions - 2, 2)
+      default:       return baseQuestions
     }
   }
 
-  // Get break duration based on energy
   function getBreakDuration(energy: EnergyLevel): number {
     switch (energy) {
-      case 'green':
-        return 3 * 60 // 3 min
-      case 'yellow':
-        return 5 * 60 // 5 min
-      case 'red':
-        return 10 * 60 // 10 min
-      default:
-        return 5 * 60
+      case 'green':  return 3 * 60
+      case 'yellow': return 5 * 60
+      case 'red':    return 10 * 60
+      default:       return 5 * 60
     }
   }
 
-  // Start a new study session
   async function startSession(config: { disciplines: string[]; questionsPerBlock: number }) {
     if (!auth.user) throw new Error('Faça login antes de iniciar uma sessão')
 
@@ -258,7 +235,6 @@ export const useSessionStore = defineStore('session', () => {
     await startNewCycle()
   }
 
-  // Start a new cycle within the session
   async function startNewCycle() {
     if (!sessionId.value) return
 
@@ -303,10 +279,9 @@ export const useSessionStore = defineStore('session', () => {
     phase.value = 'studying'
   }
 
-  // Record a question being done (no correct/wrong — that happens in review)
   async function recordAnswer() {
     if (!currentCycle.value || !currentCycle.value.id) return
-    // Guard: prevent incrementing past the target (race condition on rapid clicks)
+    // Guard against rapid double-clicks past the target
     if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) return
 
     const previousDone = currentCycle.value.questionsDone
@@ -316,7 +291,6 @@ export const useSessionStore = defineStore('session', () => {
     totalQuestions.value++
 
     try {
-      // Update in database
       await withTimeout(
         supabase
           .from('cycles')
@@ -326,19 +300,17 @@ export const useSessionStore = defineStore('session', () => {
         'Cycle progress update timed out',
       )
 
-      // Cycle complete → always go to review
       if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
         phase.value = 'review'
       }
     } catch (error) {
-      // Keep local state consistent with persisted state when network/API fails.
+      // Roll back local state on network failure
       currentCycle.value.questionsDone = previousDone
       totalQuestions.value = previousTotal
       throw error
     }
   }
 
-  // Submit per-question review (correct/wrong + error reasons) and proceed to check-in
   async function submitReview(reviews: ReviewEntry[]) {
     if (!currentCycle.value) return
 
@@ -350,7 +322,6 @@ export const useSessionStore = defineStore('session', () => {
     currentCycle.value.questionsCorrect = correctCount
     totalCorrect.value += correctCount
 
-    // Build error reviews payload
     const errorReviews = reviews
       .map((r, i) => ({ ...r, questionIndex: i }))
       .filter((r) => !r.correct)
@@ -363,7 +334,6 @@ export const useSessionStore = defineStore('session', () => {
     cycleErrorReviews.value = errorReviews
 
     try {
-      // Persist to DB
       if (currentCycle.value.id) {
         await withTimeout(
           supabase
@@ -384,14 +354,12 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  // Submit energy check-in
   async function submitCheckin(energy: EnergyLevel, note?: string) {
     if (!auth.user || !sessionId.value || !currentCycle.value) return
 
     const previousEnergy = lastEnergy.value
     const previousCycles = totalCycles.value
 
-    // Save check-in
     await withTimeout(
       supabase.from('energy_checkins').insert({
         user_id: auth.user.id,
@@ -404,7 +372,6 @@ export const useSessionStore = defineStore('session', () => {
       'Energy check-in insert timed out',
     )
 
-    // Update cycle with energy_after
     if (currentCycle.value.id) {
       await withTimeout(
         supabase
@@ -423,7 +390,6 @@ export const useSessionStore = defineStore('session', () => {
     totalCycles.value++
 
     try {
-      // Update session totals
       await withTimeout(
         supabase
           .from('study_sessions')
@@ -437,14 +403,12 @@ export const useSessionStore = defineStore('session', () => {
         'Session totals update timed out',
       )
 
-      // If red energy and cycle had ≤2 questions, there's nowhere left to reduce — end the session
       if (energy === 'red' && (currentCycle.value?.questionsTarget ?? 0) <= 2) {
         forcedRest.value = true
         await endSession()
         return
       }
 
-      // Start break
       breakTarget.value = getBreakDuration(energy)
       startBreak()
       phase.value = 'break'
@@ -455,7 +419,6 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  // Start break timer
   function startBreak() {
     breakSeconds.value = 0
     if (breakInterval) clearInterval(breakInterval)
@@ -464,7 +427,6 @@ export const useSessionStore = defineStore('session', () => {
     }, 1000)
   }
 
-  // End break and move to next cycle (or end the session after the last discipline)
   let endBreakInProgress = false
   async function endBreak() {
     if (endBreakInProgress) return
@@ -478,12 +440,10 @@ export const useSessionStore = defineStore('session', () => {
       const isLastDiscipline = currentDisciplineIndex.value >= disciplines.value.length - 1
 
       if (isLastDiscipline && !loopDisciplines.value) {
-        // Default behaviour: end the session after the last discipline
         await endSession()
         return
       }
 
-      // Rotate to next discipline (loop back to start when enabled)
       currentDisciplineIndex.value = loopDisciplines.value
         ? (currentDisciplineIndex.value + 1) % disciplines.value.length
         : currentDisciplineIndex.value + 1
@@ -494,7 +454,6 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  // End the session
   let endSessionInProgress = false
   async function endSession() {
     if (endSessionInProgress) return
@@ -507,9 +466,7 @@ export const useSessionStore = defineStore('session', () => {
         breakInterval = null
       }
 
-      // If no questions were answered, discard the session entirely
       if (totalQuestions.value === 0) {
-        // Delete orphan cycle(s) and the empty session
         if (currentCycle.value?.id) {
           await withTimeout(
             supabase.from('cycles').delete().eq('id', currentCycle.value.id),
@@ -526,7 +483,6 @@ export const useSessionStore = defineStore('session', () => {
         return
       }
 
-      // Close current cycle if open
       if (currentCycle.value?.id) {
         await withTimeout(
           supabase
@@ -538,7 +494,6 @@ export const useSessionStore = defineStore('session', () => {
         )
       }
 
-      // Update session
       await withTimeout(
         supabase
           .from('study_sessions')
@@ -560,7 +515,6 @@ export const useSessionStore = defineStore('session', () => {
     }
   }
 
-  // Reset store
   function reset() {
     if (breakInterval) {
       clearInterval(breakInterval)

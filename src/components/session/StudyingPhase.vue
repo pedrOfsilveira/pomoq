@@ -12,7 +12,6 @@ const showConfirmEnd = ref(false)
 const answering = ref(false)
 const actionError = ref('')
 
-// Large display: questions done / target
 const displayDone = computed(() =>
   String(session.currentCycle?.questionsDone ?? 0).padStart(2, '0'),
 )
