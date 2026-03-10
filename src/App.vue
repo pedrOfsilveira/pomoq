@@ -6,6 +6,8 @@ import HeaderBar from '@/components/layout/HeaderBar.vue'
 import InstallPrompt from '@/components/ui/InstallPrompt.vue'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 
+
+
 const session = useSessionStore()
 const auth = useAuthStore()
 const { setupListeners, teardownListeners, hasBeenPrompted, markAsPrompted, canInstall } = usePwaInstall()
