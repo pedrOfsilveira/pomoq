@@ -19,6 +19,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   let initPromise: Promise<void> | null = null
   let authListenerCleanup: (() => void) | null = null
+  let fetchProfilePromise: Promise<void> | null = null
+  let skipNextAuthEvent = false
 
   const isAuthenticated = computed(() => !!user.value)
   const displayName = computed(
@@ -73,10 +75,15 @@ export const useAuthStore = defineStore('auth', () => {
         await fetchProfile()
       }
 
+      skipNextAuthEvent = true
       authListenerCleanup?.()
       const {
         data: { subscription },
       } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        if (skipNextAuthEvent) {
+          skipNextAuthEvent = false
+          return
+        }
         try {
           handleAuthStateChange(event, newSession)
 
@@ -97,6 +104,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchProfile() {
+    if (!user.value) return
+
+    if (fetchProfilePromise) return fetchProfilePromise
+
+    fetchProfilePromise = _doFetchProfile().finally(() => {
+      fetchProfilePromise = null
+    })
+    return fetchProfilePromise
+  }
+
+  async function _doFetchProfile() {
     if (!user.value) return
 
     try {
