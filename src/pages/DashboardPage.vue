@@ -101,15 +101,17 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
   <div class="flex-1 flex flex-col items-center px-4 py-6">
     <div class="w-full max-w-[620px]">
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
-        <router-link to="/" class="text-white/60 hover:text-white transition-colors">
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <router-link to="/" class="text-white/60 hover:text-white transition-colors shrink-0">
           <ChevronLeft class="w-5 h-5" :stroke-width="2" />
         </router-link>
-        <div class="flex-1">
+        <div class="min-w-0 flex-1">
           <h1 class="text-2xl font-bold text-white">Dashboard</h1>
           <p class="text-white/70 text-sm">{{ greeting }}, {{ auth.displayName }}!</p>
         </div>
-        <DateRangeTabs v-model="history.selectedRange" />
+        <div class="w-full sm:w-auto sm:ml-auto">
+          <DateRangeTabs v-model="history.selectedRange" />
+        </div>
       </div>
 
       <!-- Loading state -->
