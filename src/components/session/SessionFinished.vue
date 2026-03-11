@@ -4,6 +4,7 @@ import { useSessionStore } from '@/stores/session'
 import AppButton from '@/components/ui/AppButton.vue'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
 import { Trophy, BedDouble, LayoutDashboard } from 'lucide-vue-next'
+import { formatDuration } from '@/utils/duration'
 
 const session = useSessionStore()
 
@@ -19,6 +20,8 @@ const message = computed(() => {
   if (overallAccuracy.value >= 60) return 'Bom trabalho, continue assim.'
   return 'Cada questão é um passo à frente.'
 })
+
+const averageQuestionTime = computed(() => formatDuration(session.averageQuestionSeconds))
 
 function startNew() {
   session.reset()
@@ -39,7 +42,7 @@ function startNew() {
 
     <!-- Stats -->
     <div class="bg-white/10 rounded-2xl p-6 mb-6">
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="bg-white/10 rounded-xl p-4">
           <div class="text-3xl font-bold text-white">{{ session.totalCycles }}</div>
           <div class="text-white/70 text-xs mt-1">Ciclos</div>
@@ -55,6 +58,10 @@ function startNew() {
         <div class="bg-white/10 rounded-xl p-4">
           <div class="text-3xl font-bold text-white">{{ overallAccuracy }}%</div>
           <div class="text-white/70 text-xs mt-1">Precisão</div>
+        </div>
+        <div class="bg-white/10 rounded-xl p-4 col-span-2 md:col-span-1">
+          <div class="text-3xl font-bold text-white">{{ averageQuestionTime }}</div>
+          <div class="text-white/70 text-xs mt-1">Tempo médio por questão</div>
         </div>
       </div>
 

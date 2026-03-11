@@ -8,6 +8,7 @@ import DisciplineDonutChart from '@/components/charts/DisciplineDonutChart.vue'
 import EnergyTrendChart from '@/components/charts/EnergyTrendChart.vue'
 import DailyVolumeChart from '@/components/charts/DailyVolumeChart.vue'
 import { ChevronLeft, BarChart3, ChevronDown } from 'lucide-vue-next'
+import { formatDuration } from '@/utils/duration'
 
 const REASON_META: Record<'attention' | 'content_gap' | 'interpretation', { label: string; barClass: string }> = {
   attention:       { label: 'Falta de atenção',    barClass: 'bg-energy-yellow' },
@@ -77,6 +78,8 @@ const worstColor = computed(() => {
   if (history.worstDiscipline.accuracy >= 60) return 'text-energy-yellow'
   return 'text-energy-red'
 })
+
+const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecondsPerQuestion))
 </script>
 
 <template>
@@ -152,7 +155,7 @@ const worstColor = computed(() => {
         </div>
 
         <!-- Secondary stats row -->
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="bg-white/10 rounded-xl p-3 text-center">
             <div class="text-lg font-bold text-white">{{ history.totalCyclesCompleted }}</div>
             <div class="text-white/70 text-[10px] mt-1">Ciclos completos</div>
@@ -164,6 +167,10 @@ const worstColor = computed(() => {
           <div class="bg-white/10 rounded-xl p-3 text-center">
             <div class="text-lg font-bold text-white">{{ history.totalCorrectAnswers }}</div>
             <div class="text-white/70 text-[10px] mt-1">Total de acertos</div>
+          </div>
+          <div class="bg-white/10 rounded-xl p-3 text-center">
+            <div class="text-lg font-bold text-white">{{ averageQuestionTime }}</div>
+            <div class="text-white/70 text-[10px] mt-1">Tempo médio / questão</div>
           </div>
         </div>
 

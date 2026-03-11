@@ -5,7 +5,8 @@ import { useSessionStore } from '@/stores/session'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
-import { ArrowRight } from 'lucide-vue-next'
+import { ArrowRight, TimerReset } from 'lucide-vue-next'
+import { formatDuration } from '@/utils/duration'
 
 const session = useSessionStore()
 const showConfirmEnd = ref(false)
@@ -18,6 +19,7 @@ const displayDone = computed(() =>
 const displayTarget = computed(() =>
   String(session.currentCycle?.questionsTarget ?? 0).padStart(2, '0'),
 )
+const displayQuestionTimer = computed(() => formatDuration(session.currentQuestionSeconds))
 
 async function nextQuestion() {
   if (answering.value) return
@@ -66,7 +68,14 @@ async function doEnd() {
     </div>
 
     <!-- Main display (Pomofocus-style large numbers) -->
-    <div class="bg-white/10 rounded-2xl p-10 mb-6">
+    <div class="bg-white/10 rounded-2xl p-10 mb-6 relative overflow-hidden">
+      <div
+        class="absolute top-4 right-4 inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1.5 text-xs font-semibold text-white/85"
+      >
+        <TimerReset class="h-4 w-4" :stroke-width="2" />
+        <span>{{ displayQuestionTimer }}</span>
+      </div>
+
       <div class="text-[7rem] leading-none font-extrabold text-white tabular-nums">
         {{ displayDone }}
       </div>

@@ -52,6 +52,7 @@ export type Database = {
           total_questions: number
           total_correct: number
           total_cycles: number
+          total_answer_duration_seconds: number
           final_energy: EnergyLevel | null
           notes: string | null
           created_at: string
@@ -64,6 +65,7 @@ export type Database = {
           total_questions?: number
           total_correct?: number
           total_cycles?: number
+          total_answer_duration_seconds?: number
           final_energy?: EnergyLevel | null
           notes?: string | null
           created_at?: string
@@ -76,6 +78,7 @@ export type Database = {
           total_questions?: number
           total_correct?: number
           total_cycles?: number
+          total_answer_duration_seconds?: number
           final_energy?: EnergyLevel | null
           notes?: string | null
           created_at?: string
@@ -104,6 +107,7 @@ export type Database = {
           started_at: string
           ended_at: string | null
           break_duration_seconds: number
+          answer_duration_seconds: number
           error_reviews: ErrorReviewRecord[] | null
           created_at: string
         }
@@ -120,6 +124,7 @@ export type Database = {
           started_at?: string
           ended_at?: string | null
           break_duration_seconds?: number
+          answer_duration_seconds?: number
           error_reviews?: ErrorReviewRecord[] | null
           created_at?: string
         }
@@ -136,6 +141,7 @@ export type Database = {
           started_at?: string
           ended_at?: string | null
           break_duration_seconds?: number
+          answer_duration_seconds?: number
           error_reviews?: ErrorReviewRecord[] | null
           created_at?: string
         }

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { EnergyLevel } from '@/types/database'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
 import { ChevronLeft } from 'lucide-vue-next'
+import { formatDuration } from '@/utils/duration'
 
 const history = useHistoryStore()
 const auth = useAuthStore()
@@ -54,7 +55,7 @@ function formatDateShort(dateStr: string): string {
       <!-- Overall stats -->
       <div class="bg-white/10 rounded-2xl p-6 mb-6">
         <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">Resumo Geral</h2>
-        <div class="grid grid-cols-3 gap-4 text-center">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
           <div>
             <div class="text-3xl font-bold text-white">{{ history.totalStudySessions }}</div>
             <div class="text-white/70 text-xs mt-1">Sessões</div>
@@ -66,6 +67,12 @@ function formatDateShort(dateStr: string): string {
           <div>
             <div class="text-3xl font-bold text-white">{{ history.overallAccuracy }}%</div>
             <div class="text-white/70 text-xs mt-1">Precisão</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-white">
+              {{ formatDuration(history.avgAnswerSecondsPerQuestion) }}
+            </div>
+            <div class="text-white/70 text-xs mt-1">Tempo médio / questão</div>
           </div>
         </div>
       </div>
@@ -134,6 +141,16 @@ function formatDateShort(dateStr: string): string {
               {{
                 s.total_questions > 0 ? Math.round((s.total_correct / s.total_questions) * 100) : 0
               }}%
+            </div>
+            <div class="mt-1 text-white/50 text-xs">
+              Tempo médio por questão:
+              {{
+                formatDuration(
+                  s.total_questions > 0
+                    ? Math.round(s.total_answer_duration_seconds / s.total_questions)
+                    : 0,
+                )
+              }}
             </div>
           </div>
         </div>

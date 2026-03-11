@@ -150,7 +150,7 @@ async function save() {
             :class="session.loopDisciplines ? 'bg-white/80' : 'bg-white/20'"
           >
             <span
-              class="inline-block h-4 w-4 rounded-full bg-gray-800 transition-transform"
+              class="inline-block h-4 w-4 rounded-full bg-white transition-transform"
               :class="session.loopDisciplines ? 'translate-x-6' : 'translate-x-1'"
             />
           </button>

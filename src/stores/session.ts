@@ -38,6 +38,7 @@ export interface CycleState {
   questionsTarget: number
   questionsDone: number
   questionsCorrect: number
+  answerDurationSeconds: number
   energyBefore: EnergyLevel | null
   startedAt: string | null
 }
@@ -82,10 +83,44 @@ export const useSessionStore = defineStore('session', () => {
   loadPrefs()
 
   const cycleErrorReviews = ref<ErrorReview[]>([])
+  const sessionAnswerSeconds = ref(0)
+  const currentQuestionSeconds = ref(0)
+  const questionStartedAt = ref<string | null>(null)
 
   const breakSeconds = ref(0)
   const breakTarget = ref(300) // 5 min default
   let breakInterval: ReturnType<typeof setInterval> | null = null
+  let questionInterval: ReturnType<typeof setInterval> | null = null
+
+  function getElapsedSeconds(startedAt: string | null, roundUp = false) {
+    if (!startedAt) return 0
+    const startedAtMs = new Date(startedAt).getTime()
+    if (Number.isNaN(startedAtMs)) return 0
+    const diffSeconds = Math.max(0, (Date.now() - startedAtMs) / 1000)
+    return roundUp ? Math.max(1, Math.round(diffSeconds)) : Math.floor(diffSeconds)
+  }
+
+  function syncQuestionTimer() {
+    currentQuestionSeconds.value = getElapsedSeconds(questionStartedAt.value)
+  }
+
+  function stopQuestionTimer(clearStart = true) {
+    if (questionInterval) {
+      clearInterval(questionInterval)
+      questionInterval = null
+    }
+    if (clearStart) {
+      questionStartedAt.value = null
+      currentQuestionSeconds.value = 0
+    }
+  }
+
+  function startQuestionTimer(startedAt = new Date().toISOString()) {
+    stopQuestionTimer(false)
+    questionStartedAt.value = startedAt
+    syncQuestionTimer()
+    questionInterval = setInterval(syncQuestionTimer, 1000)
+  }
 
   function saveToStorage() {
     if (phase.value === 'idle') {
@@ -103,6 +138,8 @@ export const useSessionStore = defineStore('session', () => {
           currentDisciplineIndex: currentDisciplineIndex.value,
           currentCycle: currentCycle.value,
           cycleErrorReviews: cycleErrorReviews.value,
+          sessionAnswerSeconds: sessionAnswerSeconds.value,
+          questionStartedAt: questionStartedAt.value,
           totalCycles: totalCycles.value,
           totalQuestions: totalQuestions.value,
           totalCorrect: totalCorrect.value,
@@ -129,6 +166,8 @@ export const useSessionStore = defineStore('session', () => {
       currentDisciplineIndex.value = s.currentDisciplineIndex ?? 0
       currentCycle.value = s.currentCycle ?? null
       cycleErrorReviews.value = s.cycleErrorReviews ?? []
+      sessionAnswerSeconds.value = s.sessionAnswerSeconds ?? 0
+      questionStartedAt.value = s.questionStartedAt ?? null
       totalCycles.value = s.totalCycles ?? 0
       totalQuestions.value = s.totalQuestions ?? 0
       totalCorrect.value = s.totalCorrect ?? 0
@@ -144,6 +183,13 @@ export const useSessionStore = defineStore('session', () => {
           breakSeconds.value++
         }, 1000)
       }
+
+      if (phase.value === 'studying') {
+        startQuestionTimer(questionStartedAt.value ?? new Date().toISOString())
+      } else {
+        stopQuestionTimer(false)
+        currentQuestionSeconds.value = 0
+      }
     } catch {
       localStorage.removeItem(STORAGE_KEY)
     }
@@ -158,6 +204,8 @@ export const useSessionStore = defineStore('session', () => {
       currentDisciplineIndex,
       currentCycle,
       cycleErrorReviews,
+      sessionAnswerSeconds,
+      questionStartedAt,
       totalCycles,
       totalQuestions,
       totalCorrect,
@@ -191,6 +239,11 @@ export const useSessionStore = defineStore('session', () => {
     return Math.round(
       (currentCycle.value.questionsCorrect / currentCycle.value.questionsDone) * 100,
     )
+  })
+
+  const averageQuestionSeconds = computed(() => {
+    if (totalQuestions.value === 0) return 0
+    return Math.round(sessionAnswerSeconds.value / totalQuestions.value)
   })
 
   function getAdjustedQuestions(energy: EnergyLevel, baseQuestions: number): number {
@@ -230,6 +283,8 @@ export const useSessionStore = defineStore('session', () => {
     totalCycles.value = 0
     totalQuestions.value = 0
     totalCorrect.value = 0
+    sessionAnswerSeconds.value = 0
+    stopQuestionTimer()
     lastEnergy.value = null
 
     await startNewCycle()
@@ -270,6 +325,7 @@ export const useSessionStore = defineStore('session', () => {
       questionsTarget: target,
       questionsDone: 0,
       questionsCorrect: 0,
+      answerDurationSeconds: data[0]!.answer_duration_seconds ?? 0,
       energyBefore: lastEnergy.value,
       startedAt: data[0]!.started_at,
     }
@@ -277,6 +333,7 @@ export const useSessionStore = defineStore('session', () => {
     cycleErrorReviews.value = []
 
     phase.value = 'studying'
+    startQuestionTimer()
   }
 
   async function recordAnswer() {
@@ -286,27 +343,51 @@ export const useSessionStore = defineStore('session', () => {
 
     const previousDone = currentCycle.value.questionsDone
     const previousTotal = totalQuestions.value
+    const previousCycleAnswerSeconds = currentCycle.value.answerDurationSeconds
+    const previousSessionAnswerSeconds = sessionAnswerSeconds.value
+    const questionSeconds = getElapsedSeconds(questionStartedAt.value, true)
 
     currentCycle.value.questionsDone++
+    currentCycle.value.answerDurationSeconds += questionSeconds
     totalQuestions.value++
+    sessionAnswerSeconds.value += questionSeconds
 
     try {
       await withTimeout(
         supabase
           .from('cycles')
-          .update({ questions_done: currentCycle.value.questionsDone })
+          .update({
+            questions_done: currentCycle.value.questionsDone,
+            answer_duration_seconds: currentCycle.value.answerDurationSeconds,
+          })
           .eq('id', currentCycle.value.id),
         DEFAULT_TIMEOUT_MS,
         'Cycle progress update timed out',
       )
 
+      if (sessionId.value) {
+        await withTimeout(
+          supabase
+            .from('study_sessions')
+            .update({ total_answer_duration_seconds: sessionAnswerSeconds.value })
+            .eq('id', sessionId.value),
+          DEFAULT_TIMEOUT_MS,
+          'Session answer duration update timed out',
+        )
+      }
+
       if (currentCycle.value.questionsDone >= currentCycle.value.questionsTarget) {
+        stopQuestionTimer()
         phase.value = 'review'
+      } else {
+        startQuestionTimer()
       }
     } catch (error) {
       // Roll back local state on network failure
       currentCycle.value.questionsDone = previousDone
+      currentCycle.value.answerDurationSeconds = previousCycleAnswerSeconds
       totalQuestions.value = previousTotal
+      sessionAnswerSeconds.value = previousSessionAnswerSeconds
       throw error
     }
   }
@@ -420,6 +501,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function startBreak() {
+    stopQuestionTimer()
     breakSeconds.value = 0
     if (breakInterval) clearInterval(breakInterval)
     breakInterval = setInterval(() => {
@@ -466,6 +548,8 @@ export const useSessionStore = defineStore('session', () => {
         breakInterval = null
       }
 
+      stopQuestionTimer()
+
       if (totalQuestions.value === 0) {
         if (currentCycle.value?.id) {
           await withTimeout(
@@ -502,6 +586,7 @@ export const useSessionStore = defineStore('session', () => {
             total_questions: totalQuestions.value,
             total_correct: totalCorrect.value,
             total_cycles: totalCycles.value,
+            total_answer_duration_seconds: sessionAnswerSeconds.value,
             final_energy: lastEnergy.value,
           })
           .eq('id', sessionId.value),
@@ -530,9 +615,11 @@ export const useSessionStore = defineStore('session', () => {
     totalCycles.value = 0
     totalQuestions.value = 0
     totalCorrect.value = 0
+    sessionAnswerSeconds.value = 0
     lastEnergy.value = null
     forcedRest.value = false
     breakSeconds.value = 0
+    stopQuestionTimer()
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -545,6 +632,9 @@ export const useSessionStore = defineStore('session', () => {
     currentDisciplineIndex,
     currentCycle,
     cycleErrorReviews,
+    sessionAnswerSeconds,
+    currentQuestionSeconds,
+    averageQuestionSeconds,
     totalCycles,
     totalQuestions,
     totalCorrect,

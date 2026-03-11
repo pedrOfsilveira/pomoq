@@ -13,6 +13,7 @@ interface SessionSummary {
   total_questions: number
   total_correct: number
   total_cycles: number
+  total_answer_duration_seconds: number
   final_energy: EnergyLevel | null
 }
 
@@ -23,6 +24,7 @@ interface CycleSummary {
   discipline: string
   questions_done: number
   questions_correct: number
+  answer_duration_seconds: number
   energy_before: EnergyLevel | null
   energy_after: EnergyLevel | null
   started_at: string
@@ -96,9 +98,18 @@ export const useHistoryStore = defineStore('history', () => {
     sessions.value.reduce((sum, s) => sum + s.total_cycles, 0),
   )
 
+  const totalAnswerDurationSeconds = computed(() =>
+    sessions.value.reduce((sum, s) => sum + s.total_answer_duration_seconds, 0),
+  )
+
   const avgQuestionsPerSession = computed(() => {
     if (sessions.value.length === 0) return 0
     return Math.round(totalQuestionsAnswered.value / sessions.value.length)
+  })
+
+  const avgAnswerSecondsPerQuestion = computed(() => {
+    if (totalQuestionsAnswered.value === 0) return 0
+    return Math.round(totalAnswerDurationSeconds.value / totalQuestionsAnswered.value)
   })
 
   const studyStreak = computed(() => {
@@ -277,7 +288,7 @@ export const useHistoryStore = defineStore('history', () => {
       const sessionsResult = await withTimeout(
         supabase
           .from('study_sessions')
-          .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, final_energy')
+          .select('id, started_at, ended_at, total_questions, total_correct, total_cycles, total_answer_duration_seconds, final_energy')
           .eq('user_id', auth.user.id)
           .order('started_at', { ascending: false })
           .limit(100),
@@ -298,7 +309,7 @@ export const useHistoryStore = defineStore('history', () => {
         supabase
           .from('cycles')
           .select(
-            'id, session_id, cycle_number, discipline, questions_done, questions_correct, energy_before, energy_after, started_at, error_reviews',
+            'id, session_id, cycle_number, discipline, questions_done, questions_correct, answer_duration_seconds, energy_before, energy_after, started_at, error_reviews',
           )
           .in('session_id', sessionIds)
           .order('started_at', { ascending: false })
@@ -330,7 +341,9 @@ export const useHistoryStore = defineStore('history', () => {
     totalCorrectAnswers,
     overallAccuracy,
     totalCyclesCompleted,
+    totalAnswerDurationSeconds,
     avgQuestionsPerSession,
+    avgAnswerSecondsPerQuestion,
     studyStreak,
     dailyStats,
     disciplineStats,
