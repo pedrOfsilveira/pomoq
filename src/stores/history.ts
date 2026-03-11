@@ -46,6 +46,8 @@ interface DailyStats {
   totalQuestions: number
   totalCorrect: number
   sessions: number
+  totalAnswerDurationSeconds: number
+  avgAnswerSeconds: number
 }
 
 interface DisciplineStats {
@@ -54,6 +56,8 @@ interface DisciplineStats {
   totalCorrect: number
   accuracy: number
   cycles: number
+  totalAnswerDurationSeconds: number
+  avgAnswerSeconds: number
 }
 
 interface EnergyTrend {
@@ -146,12 +150,22 @@ export const useHistoryStore = defineStore('history', () => {
         existing.totalQuestions += s.total_questions
         existing.totalCorrect += s.total_correct
         existing.sessions++
+        existing.totalAnswerDurationSeconds += s.total_answer_duration_seconds
+        existing.avgAnswerSeconds =
+          existing.totalQuestions > 0
+            ? Math.round(existing.totalAnswerDurationSeconds / existing.totalQuestions)
+            : 0
       } else {
         map.set(date, {
           date,
           totalQuestions: s.total_questions,
           totalCorrect: s.total_correct,
           sessions: 1,
+          totalAnswerDurationSeconds: s.total_answer_duration_seconds,
+          avgAnswerSeconds:
+            s.total_questions > 0
+              ? Math.round(s.total_answer_duration_seconds / s.total_questions)
+              : 0,
         })
       }
     }
@@ -166,9 +180,14 @@ export const useHistoryStore = defineStore('history', () => {
         existing.totalQuestions += c.questions_done
         existing.totalCorrect += c.questions_correct
         existing.cycles++
+        existing.totalAnswerDurationSeconds += c.answer_duration_seconds
         existing.accuracy =
           existing.totalQuestions > 0
             ? Math.round((existing.totalCorrect / existing.totalQuestions) * 100)
+            : 0
+        existing.avgAnswerSeconds =
+          existing.totalQuestions > 0
+            ? Math.round(existing.totalAnswerDurationSeconds / existing.totalQuestions)
             : 0
       } else {
         map.set(c.discipline, {
@@ -178,6 +197,9 @@ export const useHistoryStore = defineStore('history', () => {
           accuracy:
             c.questions_done > 0 ? Math.round((c.questions_correct / c.questions_done) * 100) : 0,
           cycles: 1,
+          totalAnswerDurationSeconds: c.answer_duration_seconds,
+          avgAnswerSeconds:
+            c.questions_done > 0 ? Math.round(c.answer_duration_seconds / c.questions_done) : 0,
         })
       }
     }
@@ -227,6 +249,14 @@ export const useHistoryStore = defineStore('history', () => {
     return dailyStats.value.slice(-14).map((d) => ({
       date: d.date,
       accuracy: d.totalQuestions > 0 ? Math.round((d.totalCorrect / d.totalQuestions) * 100) : 0,
+      questions: d.totalQuestions,
+    }))
+  })
+
+  const averageTimeTrend = computed(() => {
+    return dailyStats.value.slice(-14).map((d) => ({
+      date: d.date,
+      avgSeconds: d.avgAnswerSeconds,
       questions: d.totalQuestions,
     }))
   })
@@ -350,6 +380,7 @@ export const useHistoryStore = defineStore('history', () => {
     energyTrend,
     weeklyVolume,
     accuracyTrend,
+    averageTimeTrend,
     errorReasonStats,
     bestDiscipline,
     worstDiscipline,

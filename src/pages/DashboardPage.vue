@@ -3,8 +3,10 @@ import { onMounted, computed, watch, ref } from 'vue'
 import { useHistoryStore } from '@/stores/history'
 import { useAuthStore } from '@/stores/auth'
 import AccuracyLineChart from '@/components/charts/AccuracyLineChart.vue'
+import AverageTimeLineChart from '@/components/charts/AverageTimeLineChart.vue'
 import WeeklyVolumeChart from '@/components/charts/WeeklyVolumeChart.vue'
 import DisciplineDonutChart from '@/components/charts/DisciplineDonutChart.vue'
+import DisciplineTimeChart from '@/components/charts/DisciplineTimeChart.vue'
 import EnergyTrendChart from '@/components/charts/EnergyTrendChart.vue'
 import DailyVolumeChart from '@/components/charts/DailyVolumeChart.vue'
 import { ChevronLeft, BarChart3, ChevronDown } from 'lucide-vue-next'
@@ -51,6 +53,18 @@ const disciplineChartData = computed(() =>
     accuracy: d.accuracy,
   })),
 )
+
+const disciplineTimeChartData = computed(() =>
+  history.disciplineStats
+    .filter((d) => d.totalQuestions > 0)
+    .map((d) => ({
+      discipline: d.discipline,
+      avgSeconds: d.avgAnswerSeconds,
+      totalQuestions: d.totalQuestions,
+    })),
+)
+
+const disciplineView = ref<'distribution' | 'time'>('distribution')
 
 const expandedDisciplines = ref<Set<string>>(new Set())
 function toggleDiscipline(name: string) {
@@ -207,6 +221,14 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
           <AccuracyLineChart :data="history.accuracyTrend" />
         </div>
 
+        <!-- Average time over time -->
+        <div v-if="history.averageTimeTrend.length >= 2" class="bg-white/10 rounded-2xl p-5">
+          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">
+            Tempo Médio por Questão
+          </h2>
+          <AverageTimeLineChart :data="history.averageTimeTrend" />
+        </div>
+
         <!-- Daily volume (Line chart) -->
         <div v-if="hasChartData" class="bg-white/10 rounded-2xl p-5">
           <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">Volume Diário</h2>
@@ -219,12 +241,43 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
           <WeeklyVolumeChart :data="history.weeklyVolume" />
         </div>
 
-        <!-- Discipline breakdown (Donut) -->
+        <!-- Discipline insights -->
         <div v-if="disciplineChartData.length > 0" class="bg-white/10 rounded-2xl p-5">
-          <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">
-            Distribuição por Disciplina
-          </h2>
-          <DisciplineDonutChart :data="disciplineChartData" />
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <h2 class="text-white/80 text-xs uppercase tracking-wider">
+              Análise por Disciplina
+            </h2>
+            <div class="inline-flex rounded-lg bg-white/5 p-1">
+              <button
+                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer"
+                :class="
+                  disciplineView === 'distribution'
+                    ? 'bg-white text-gray-900'
+                    : 'text-white/70 hover:text-white'
+                "
+                @click="disciplineView = 'distribution'"
+              >
+                Distribuição
+              </button>
+              <button
+                class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer"
+                :class="
+                  disciplineView === 'time'
+                    ? 'bg-white text-gray-900'
+                    : 'text-white/70 hover:text-white'
+                "
+                @click="disciplineView = 'time'"
+              >
+                Tempo médio
+              </button>
+            </div>
+          </div>
+
+          <DisciplineDonutChart
+            v-if="disciplineView === 'distribution'"
+            :data="disciplineChartData"
+          />
+          <DisciplineTimeChart v-else :data="disciplineTimeChartData" />
         </div>
 
         <!-- Discipline accuracy table (expandable with error reasons) -->
@@ -244,7 +297,8 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
                 <div class="flex-1 min-w-0">
                   <div class="text-white font-medium text-sm truncate">{{ d.discipline }}</div>
                   <div class="text-white/60 text-xs">
-                    {{ d.totalQuestions }} questões · {{ d.cycles }} ciclos
+                    {{ d.totalQuestions }} questões · {{ d.cycles }} ciclos ·
+                    {{ formatDuration(d.avgAnswerSeconds) }} / questão
                   </div>
                 </div>
                 <div class="flex items-center gap-3 ml-3">
@@ -291,6 +345,13 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
                   class="px-3 pb-3 border-t border-white/10"
                 >
                   <div class="pt-3 space-y-2">
+                    <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 mb-1">
+                      <span class="text-white/60 text-xs">Tempo médio por questão</span>
+                      <span class="text-white text-sm font-semibold">
+                        {{ formatDuration(d.avgAnswerSeconds) }}
+                      </span>
+                    </div>
+
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-white/50 text-[10px] uppercase tracking-wider">Padrão de erros</span>
                       <span class="text-white/40 text-xs">{{ errorReasonByDiscipline.get(d.discipline)!.total }} erro{{ errorReasonByDiscipline.get(d.discipline)!.total !== 1 ? 's' : '' }}</span>

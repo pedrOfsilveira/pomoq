@@ -101,6 +101,38 @@ function formatDateShort(dateStr: string): string {
                     : 0
                 }}% acerto
               </div>
+              <div class="text-white/50 text-xs mt-1">
+                {{ formatDuration(day.avgAnswerSeconds) }} / questão
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Average time by discipline -->
+      <div v-if="history.disciplineStats.length > 0" class="bg-white/10 rounded-2xl p-6 mb-6">
+        <h2 class="text-white/80 text-xs uppercase tracking-wider mb-4">
+          Tempo Médio por Disciplina
+        </h2>
+        <div class="space-y-3">
+          <div
+            v-for="discipline in history.disciplineStats"
+            :key="discipline.discipline"
+            class="bg-white/5 rounded-xl p-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-white font-medium text-sm">{{ discipline.discipline }}</div>
+                <div class="text-white/60 text-xs">
+                  {{ discipline.totalQuestions }} questões · {{ discipline.cycles }} ciclos
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-white font-semibold text-sm">
+                  {{ formatDuration(discipline.avgAnswerSeconds) }}
+                </div>
+                <div class="text-white/50 text-xs">tempo médio</div>
+              </div>
             </div>
           </div>
         </div>
