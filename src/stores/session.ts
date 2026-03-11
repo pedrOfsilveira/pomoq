@@ -195,7 +195,7 @@ export const useSessionStore = defineStore('session', () => {
 
   function getAdjustedQuestions(energy: EnergyLevel, baseQuestions: number): number {
     switch (energy) {
-      case 'green':  return Math.min(baseQuestions + 2, 10)
+      case 'green':  return Math.min(baseQuestions + 2, 20)
       case 'yellow': return baseQuestions
       case 'red':    return Math.max(baseQuestions - 2, 2)
       default:       return baseQuestions

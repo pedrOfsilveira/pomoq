@@ -82,7 +82,7 @@ function formatDateShort(dateStr: string): string {
             <div>
               <div class="text-white font-medium text-sm">{{ formatDateShort(day.date) }}</div>
               <div class="text-white/70 text-xs">
-                {{ day.sessions }} sessão{{ day.sessions > 1 ? 'ões' : '' }}
+                {{ day.sessions }} {{ day.sessions > 1 ? 'sessões' : 'sessão' }}
               </div>
             </div>
             <div class="text-right">

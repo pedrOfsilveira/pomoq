@@ -115,13 +115,13 @@ async function start() {
           v-model.number="questionsPerBlock"
           type="range"
           min="1"
-          max="10"
+          max="20"
           class="w-full accent-white"
         />
         <div class="relative w-full text-white/60 text-xs mt-1 h-4">
           <span class="absolute left-0">1</span>
-          <span class="absolute left-[44.44%] -translate-x-1/2">5</span>
-          <span class="absolute right-0">10</span>
+          <span class="absolute left-[47.37%] -translate-x-1/2">10</span>
+          <span class="absolute right-0">20</span>
         </div>
       </div>
     </div>

@@ -130,7 +130,7 @@ async function save() {
           v-model.number="questionsPerBlock"
           type="range"
           min="1"
-          max="10"
+          max="20"
           class="w-full accent-white mb-6"
         />
 
