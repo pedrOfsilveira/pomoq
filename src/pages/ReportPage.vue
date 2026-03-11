@@ -4,6 +4,7 @@ import { useHistoryStore } from '@/stores/history'
 import { useAuthStore } from '@/stores/auth'
 import type { EnergyLevel } from '@/types/database'
 import EnergyBadge from '@/components/ui/EnergyBadge.vue'
+import DateRangeTabs from '@/components/ui/DateRangeTabs.vue'
 import { ChevronLeft } from 'lucide-vue-next'
 import { formatDuration } from '@/utils/duration'
 
@@ -49,7 +50,10 @@ function formatDateShort(dateStr: string): string {
         <router-link to="/" class="text-white/70 hover:text-white transition-colors">
           <ChevronLeft class="w-5 h-5" :stroke-width="2" />
         </router-link>
-        <h1 class="text-2xl font-bold text-white">Relatório</h1>
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold text-white">Relatório</h1>
+        </div>
+        <DateRangeTabs v-model="history.selectedRange" />
       </div>
 
       <!-- Overall stats -->

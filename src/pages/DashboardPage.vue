@@ -9,6 +9,7 @@ import DisciplineDonutChart from '@/components/charts/DisciplineDonutChart.vue'
 import DisciplineTimeChart from '@/components/charts/DisciplineTimeChart.vue'
 import EnergyTrendChart from '@/components/charts/EnergyTrendChart.vue'
 import DailyVolumeChart from '@/components/charts/DailyVolumeChart.vue'
+import DateRangeTabs from '@/components/ui/DateRangeTabs.vue'
 import { ChevronLeft, BarChart3, ChevronDown } from 'lucide-vue-next'
 import { formatDuration } from '@/utils/duration'
 
@@ -104,10 +105,11 @@ const averageQuestionTime = computed(() => formatDuration(history.avgAnswerSecon
         <router-link to="/" class="text-white/60 hover:text-white transition-colors">
           <ChevronLeft class="w-5 h-5" :stroke-width="2" />
         </router-link>
-        <div>
+        <div class="flex-1">
           <h1 class="text-2xl font-bold text-white">Dashboard</h1>
           <p class="text-white/70 text-sm">{{ greeting }}, {{ auth.displayName }}!</p>
         </div>
+        <DateRangeTabs v-model="history.selectedRange" />
       </div>
 
       <!-- Loading state -->

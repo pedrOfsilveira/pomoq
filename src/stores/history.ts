@@ -6,6 +6,8 @@ import { withTimeout, DEFAULT_TIMEOUT_MS } from '@/utils/timeout'
 import { useAuthStore } from './auth'
 import type { EnergyLevel, ErrorReviewRecord, ErrorReason } from '@/types/database'
 
+export type HistoryRange = '7d' | '30d' | '90d' | 'all'
+
 interface SessionSummary {
   id: string
   started_at: string
@@ -81,15 +83,41 @@ export const useHistoryStore = defineStore('history', () => {
   const cycles = ref<CycleSummary[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const selectedRange = ref<HistoryRange>('30d')
 
-  const totalStudySessions = computed(() => sessions.value.length)
+  const rangeStart = computed(() => {
+    if (selectedRange.value === 'all') return null
+
+    const days = {
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+    }[selectedRange.value]
+
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - (days - 1))
+    return start
+  })
+
+  const filteredSessions = computed(() => {
+    if (!rangeStart.value) return sessions.value
+    return sessions.value.filter((session) => new Date(session.started_at) >= rangeStart.value!)
+  })
+
+  const filteredCycles = computed(() => {
+    const sessionIds = new Set(filteredSessions.value.map((session) => session.id))
+    return cycles.value.filter((cycle) => sessionIds.has(cycle.session_id))
+  })
+
+  const totalStudySessions = computed(() => filteredSessions.value.length)
 
   const totalQuestionsAnswered = computed(() =>
-    sessions.value.reduce((sum, s) => sum + s.total_questions, 0),
+    filteredSessions.value.reduce((sum, s) => sum + s.total_questions, 0),
   )
 
   const totalCorrectAnswers = computed(() =>
-    sessions.value.reduce((sum, s) => sum + s.total_correct, 0),
+    filteredSessions.value.reduce((sum, s) => sum + s.total_correct, 0),
   )
 
   const overallAccuracy = computed(() => {
@@ -99,16 +127,16 @@ export const useHistoryStore = defineStore('history', () => {
   })
 
   const totalCyclesCompleted = computed(() =>
-    sessions.value.reduce((sum, s) => sum + s.total_cycles, 0),
+    filteredSessions.value.reduce((sum, s) => sum + s.total_cycles, 0),
   )
 
   const totalAnswerDurationSeconds = computed(() =>
-    sessions.value.reduce((sum, s) => sum + s.total_answer_duration_seconds, 0),
+    filteredSessions.value.reduce((sum, s) => sum + s.total_answer_duration_seconds, 0),
   )
 
   const avgQuestionsPerSession = computed(() => {
-    if (sessions.value.length === 0) return 0
-    return Math.round(totalQuestionsAnswered.value / sessions.value.length)
+    if (filteredSessions.value.length === 0) return 0
+    return Math.round(totalQuestionsAnswered.value / filteredSessions.value.length)
   })
 
   const avgAnswerSecondsPerQuestion = computed(() => {
@@ -117,8 +145,8 @@ export const useHistoryStore = defineStore('history', () => {
   })
 
   const studyStreak = computed(() => {
-    if (sessions.value.length === 0) return 0
-    const dates = new Set(sessions.value.map((s) => s.started_at.split('T')[0]!))
+    if (filteredSessions.value.length === 0) return 0
+    const dates = new Set(filteredSessions.value.map((s) => s.started_at.split('T')[0]!))
     const sortedDates = Array.from(dates).sort((a, b) => b.localeCompare(a))
 
     const today = new Date().toISOString().split('T')[0]!
@@ -143,7 +171,7 @@ export const useHistoryStore = defineStore('history', () => {
 
   const dailyStats = computed<DailyStats[]>(() => {
     const map = new Map<string, DailyStats>()
-    for (const s of sessions.value) {
+    for (const s of filteredSessions.value) {
       const date = s.started_at.split('T')[0]!
       const existing = map.get(date)
       if (existing) {
@@ -174,7 +202,7 @@ export const useHistoryStore = defineStore('history', () => {
 
   const disciplineStats = computed<DisciplineStats[]>(() => {
     const map = new Map<string, DisciplineStats>()
-    for (const c of cycles.value) {
+    for (const c of filteredCycles.value) {
       const existing = map.get(c.discipline)
       if (existing) {
         existing.totalQuestions += c.questions_done
@@ -208,7 +236,7 @@ export const useHistoryStore = defineStore('history', () => {
 
   const energyTrend = computed<EnergyTrend[]>(() => {
     const map = new Map<string, EnergyTrend>()
-    for (const c of cycles.value) {
+    for (const c of filteredCycles.value) {
       if (!c.energy_after) continue
       const date = c.started_at.split('T')[0]!
       const existing = map.get(date) || { date, green: 0, yellow: 0, red: 0, total: 0 }
@@ -229,7 +257,7 @@ export const useHistoryStore = defineStore('history', () => {
       const weekEnd = new Date(weekStart)
       weekEnd.setDate(weekStart.getDate() + 7)
 
-      const weekSessions = sessions.value.filter((s) => {
+      const weekSessions = filteredSessions.value.filter((s) => {
         const d = new Date(s.started_at)
         return d >= weekStart && d < weekEnd
       })
@@ -263,7 +291,7 @@ export const useHistoryStore = defineStore('history', () => {
 
   const errorReasonStats = computed<ErrorReasonStat[]>(() => {
     const map = new Map<string, ErrorReasonStat>()
-    for (const c of cycles.value) {
+    for (const c of filteredCycles.value) {
       if (!c.error_reviews || c.error_reviews.length === 0) continue
       for (const review of c.error_reviews) {
         let stat = map.get(c.discipline)
@@ -361,11 +389,18 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
+  function setSelectedRange(range: HistoryRange) {
+    selectedRange.value = range
+  }
+
   return {
     sessions,
     cycles,
     loading,
     error,
+    selectedRange,
+    filteredSessions,
+    filteredCycles,
     totalStudySessions,
     totalQuestionsAnswered,
     totalCorrectAnswers,
@@ -384,6 +419,7 @@ export const useHistoryStore = defineStore('history', () => {
     errorReasonStats,
     bestDiscipline,
     worstDiscipline,
+    setSelectedRange,
     fetchSessions,
   }
 })
